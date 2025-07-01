@@ -1,0 +1,1 @@
+EPSILON = 1e-15  # Provide numerical stability
