@@ -8,7 +8,7 @@ class Tensor:
         self.requires_grad = requires_grad
         self.depends_on = depends_on or []
         self.grad = None
-        self._grad_func = lambda: None
+        self._grad_func = None
 
     def __repr__(self):
         return f"Tensor({self.data}, requires_grad={self.requires_grad})"
@@ -34,7 +34,8 @@ class Tensor:
         build_topo(self)
 
         for tensor in reversed(topo_order):
-            tensor._grad_func()
+            if tensor.requires_grad and tensor._grad_func is not None:
+                tensor._grad_func()
 
     def zero_grad(self):
         if self.requires_grad:
@@ -53,23 +54,41 @@ class Tensor:
     # Operator overloading
     def __add__(self, other):
         return Add()(self, other)
+    
+    def __iadd__(self, other):
+        return Add()(other, self)
 
     def __sub__(self, other):
         return Sub()(self, other)
+    
+    def __isub__(self, other):
+        return Sub()(other, self)
 
     def __neg__(self):
         return Neg()(self)
 
     def __mul__(self, other):
         return Mul()(self, other)
+    
+    def __imul__(self, other):
+        return Mul()(other, self)
 
     def __matmul__(self, other):
         return MatMul()(self, other)
+    
+    def __imatmul__(self, other):
+        return MatMul()(other, self)
 
     def __truediv__(self, other):
         return Div()(self, other)
     
+    def __itruediv__(self, other):
+        return Div()(other, self)
+    
     def __pow__(self, power):
+        return Pow()(self, power)
+    
+    def __ipow__(self, power):
         return Pow()(self, power)
     
     # Functional operations
@@ -108,6 +127,24 @@ def ensure_tensor(obj):
     return obj if isinstance(obj, Tensor) else Tensor(obj)
 
 
+def unbroadcast(grad, shape):
+    """
+    Reduce gradient to original shape by summing over broadcasted dimensions.
+    This handles the inverse of NumPy broadcasting.
+    """
+    # Remove extra leading dimensions
+    ndims_added = len(grad.shape) - len(shape)
+    for _ in range(ndims_added):
+        grad = grad.sum(axis=0)
+    
+    # Sum over broadcasted dimensions (size 1 -> size N)
+    for i, (dim, grad_dim) in enumerate(zip(shape, grad.shape)):
+        if dim == 1 and grad_dim > 1:
+            grad = grad.sum(axis=i, keepdims=True)
+    
+    return grad
+
+
 class Function:
     def __call__(self, *args):
         raise NotImplementedError()
@@ -121,9 +158,12 @@ class Add(Function):
 
         def _backward():
             if a.requires_grad:
-                a.grad = a.grad + out.grad if a.grad is not None else out.grad
+                grad_a = unbroadcast(out.grad, a.data.shape)
+                a.grad = a.grad + grad_a if a.grad is not None else grad_a
+                
             if b.requires_grad:
-                b.grad = b.grad + out.grad if b.grad is not None else out.grad
+                grad_b = unbroadcast(out.grad, b.data.shape)
+                b.grad = b.grad + grad_b if b.grad is not None else grad_b
 
         out._grad_func = _backward
         return out
@@ -137,9 +177,11 @@ class Sub(Function):
 
         def _backward():
             if a.requires_grad:
-                a.grad = a.grad + out.grad if a.grad is not None else out.grad
+                grad_a = unbroadcast(out.grad, a.data.shape)
+                a.grad = a.grad + grad_a if a.grad is not None else grad_a
             if b.requires_grad:
-                b.grad = b.grad - out.grad if b.grad is not None else -out.grad
+                grad_b = unbroadcast(-out.grad, b.data.shape)
+                b.grad = b.grad + grad_b if b.grad is not None else grad_b
 
         out._grad_func = _backward
         return out
@@ -168,11 +210,11 @@ class Mul(Function):
 
         def _backward():
             if a.requires_grad:
-                grad = b.data * out.grad
-                a.grad = a.grad + grad if a.grad is not None else grad
+                grad_a = unbroadcast(b.data * out.grad, a.data.shape)
+                a.grad = a.grad + grad_a if a.grad is not None else grad_a
             if b.requires_grad:
-                grad = a.data * out.grad
-                b.grad = b.grad + grad if b.grad is not None else grad
+                grad_b = unbroadcast(a.data * out.grad, b.data.shape)
+                b.grad = b.grad + grad_b if b.grad is not None else grad_b
 
         out._grad_func = _backward
         return out
@@ -186,11 +228,11 @@ class Div(Function):
 
         def _backward():
             if a.requires_grad:
-                grad = out.grad / b.data
-                a.grad = a.grad + grad if a.grad is not None else grad
+                grad_a = unbroadcast(out.grad / b.data, a.data.shape)
+                a.grad = a.grad + grad_a if a.grad is not None else grad_a
             if b.requires_grad:
-                grad = -a.data / (b.data ** 2) * out.grad
-                b.grad = b.grad + grad if b.grad is not None else grad
+                grad_b = unbroadcast(-a.data / (b.data ** 2) * out.grad, b.data.shape)
+                b.grad = b.grad + grad_b if b.grad is not None else grad_b
 
         out._grad_func = _backward
         return out
@@ -263,13 +305,12 @@ class Log(Function):
 class ReLU(Function):
     def __call__(self, a):
         a = ensure_tensor(a)
-        out_data = np.maximum(0, a.data)
-        out = Tensor(out_data, requires_grad=a.requires_grad)
+        out = Tensor(np.maximum(0, a.data), requires_grad=a.requires_grad)
         out.depends_on = [a]
 
         def _backward():
             if a.requires_grad:
-                grad = (a.data > 0).astype(float) * out.grad
+                grad = np.where(a.data > 0, out.grad, 0) * out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
 
         out._grad_func = _backward
@@ -381,14 +422,21 @@ class BCELoss(Function):
         preds = ensure_tensor(preds)
         targets = ensure_tensor(targets)
 
-        clipped = np.clip(preds.data, EPSILON, 1 - EPSILON)
-        loss = -np.mean(targets.data * np.log(clipped) + (1 - targets.data) * np.log(1 - clipped))
+        # Flatten both to 1D to avoid shape mismatches
+        preds_flat = preds.data.flatten()
+        targets_flat = targets.data.flatten()
+        
+        clipped = np.clip(preds_flat, EPSILON, 1 - EPSILON)
+        loss = -np.mean(targets_flat * np.log(clipped) + (1 - targets_flat) * np.log(1 - clipped))
         out = Tensor(loss, requires_grad=preds.requires_grad)
         out.depends_on = [preds, targets]
 
         def _backward():
             if preds.requires_grad:
-                grad = (clipped - targets.data) / (clipped * (1 - clipped) * targets.data.size)
+                grad = (clipped - targets_flat) / (clipped * (1 - clipped) * targets_flat.size)
+                
+                # Reshape gradient back to original preds shape
+                grad = grad.reshape(preds.data.shape)
                 preds.grad = preds.grad + grad if preds.grad is not None else grad
 
         out._grad_func = _backward
