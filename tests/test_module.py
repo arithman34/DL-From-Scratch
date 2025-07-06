@@ -67,7 +67,7 @@ class TestBinaryClassifier(unittest.TestCase):
         self.assertEqual(len(self.model.parameters), 4)  # 2 Linear layers: W and b each
         sample_input = self.train_dataset[0][0]
         output = self.model(sample_input)
-        self.assertEqual(output.shape, (1,))  # single output for binary classification
+        self.assertEqual(output.shape, (1,))
 
     def test_fit(self):
         initial_loss = None
@@ -84,7 +84,7 @@ class TestBinaryClassifier(unittest.TestCase):
                 self.optimizer.step()
 
                 total_loss += loss.data * len(x_batch.data)
-                preds = (outputs.data > 0.5).astype(int).squeeze()
+                preds = (outputs.data > 0.5).astype(int).squeeze(-1)
                 labels = y_batch.data.astype(int)
                 total_correct += np.sum(preds == labels)
                 total_samples += len(y_batch.data)
@@ -117,7 +117,7 @@ class TestBinaryClassifier(unittest.TestCase):
         test_total = 0
         for x_batch, y_batch in self.test_loader:
             outputs = self.model(x_batch)
-            preds = (outputs.data > 0.5).astype(int).squeeze()
+            preds = (outputs.data > 0.5).astype(int).squeeze(-1)
             labels = y_batch.data.astype(int)
             test_correct += np.sum(preds == labels)
             test_total += len(y_batch.data)
@@ -139,9 +139,9 @@ class TestBinaryClassifier(unittest.TestCase):
                 return self.net(x)
 
         X_train_torch = torch.tensor(self.X_train, dtype=torch.float32)
-        y_train_torch = torch.tensor(self.y_train.reshape(-1, 1), dtype=torch.float32)
+        y_train_torch = torch.tensor(self.y_train, dtype=torch.float32)
         X_test_torch = torch.tensor(self.X_test, dtype=torch.float32)
-        y_test_torch = torch.tensor(self.y_test.reshape(-1, 1), dtype=torch.float32)
+        y_test_torch = torch.tensor(self.y_test, dtype=torch.float32)
 
         torch_train_dataset = data.TensorDataset(X_train_torch, y_train_torch)
         torch_test_dataset = data.TensorDataset(X_test_torch, y_test_torch)
@@ -157,7 +157,7 @@ class TestBinaryClassifier(unittest.TestCase):
             torch_model.train()
             for X_batch, y_batch in torch_train_loader:
                 torch_optimizer.zero_grad()
-                outputs = torch_model(X_batch)
+                outputs = torch_model(X_batch).squeeze(-1)
                 loss = torch_criterion(outputs, y_batch)
                 loss.backward()
                 torch_optimizer.step()
@@ -168,8 +168,10 @@ class TestBinaryClassifier(unittest.TestCase):
             total_correct = 0
             total_samples = 0
             for X_batch, y_batch in torch_test_loader:
-                preds = (torch_model(X_batch) > 0.5).int().squeeze()
-                total_correct += (preds == y_batch.int().squeeze()).sum().item()
+                model_output = torch_model(X_batch)
+                preds = (model_output > 0.5).int().squeeze(-1)
+                labels = y_batch.int()
+                total_correct += (preds == labels).sum().item()
                 total_samples += y_batch.size(0)
             torch_acc = total_correct / total_samples
 

@@ -117,6 +117,9 @@ class Tensor:
     def clip(self, min_val, max_val):
         return Clip()(self, min_val, max_val)
     
+    def squeeze(self, axis=-1):
+        return Squeeze()(self, axis)
+
     def bce(self, targets):
         return BCELoss()(self, targets)
     
@@ -326,7 +329,7 @@ class Sigmoid(Function):
         out.depends_on = [a]
 
         def _backward():
-            if a.requires_grad:
+            if a.requires_grad and out.grad is not None:
                 grad = sig * (1 - sig) * out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
 
@@ -463,6 +466,27 @@ class CrossEntropyLoss(Function):
                 grad[np.arange(len(targets.data)), targets.data.astype(int)] = -1 / clipped[np.arange(len(targets.data)), targets.data.astype(int)]
                 grad = grad / len(targets.data)  # Mean over batch
                 preds.grad = preds.grad + grad if preds.grad is not None else grad
+
+        out._grad_func = _backward
+        return out
+
+
+class Squeeze(Function):
+    def __call__(self, a, axis=-1):
+        a = ensure_tensor(a)
+        squeezed_data = a.data.squeeze(axis)
+        # Ensure we don't squeeze away all dimensions for scalars
+        if squeezed_data.ndim == 0 and a.data.ndim > 0:
+            squeezed_data = squeezed_data.reshape(1)
+        
+        out = Tensor(squeezed_data, requires_grad=a.requires_grad)
+        out.depends_on = [a]
+
+        def _backward():
+            if a.requires_grad and out.grad is not None:
+                # Expand gradient back to original shape
+                grad = np.expand_dims(out.grad, axis)
+                a.grad = a.grad + grad if a.grad is not None else grad
 
         out._grad_func = _backward
         return out
