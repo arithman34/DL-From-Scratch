@@ -1,6 +1,7 @@
 import numpy as np
-from src.deep_learning.tensor import Tensor
-from src.deep_learning.backend import EPSILON
+
+from deep_learning.tensor import Tensor
+from deep_learning.backend import EPSILON
 
 
 class Optimizer:

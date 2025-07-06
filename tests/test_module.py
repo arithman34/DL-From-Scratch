@@ -5,15 +5,15 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 
-from src.deep_learning.tensor import *
-from src.deep_learning.module import *
-from src.deep_learning.dataset import Dataset, DataLoader
-from src.deep_learning.optimizers import SGD
-from src.data.data_generator import get_classification_data
+from deep_learning.tensor import *
+from deep_learning.module import *
+from deep_learning.dataset import Dataset, DataLoader
+from deep_learning.optimizers import SGD
+from data.data_generator import get_classification_data
 
 
 class BinaryClassifier(Module):
-    def __init__(self, in_features, hidden_features, out_features):
+    def __init__(self, in_features: int, hidden_features: int, out_features: int) -> None:
         super().__init__()
         self.net = Sequential(
             Linear(in_features, hidden_features),
@@ -22,7 +22,7 @@ class BinaryClassifier(Module):
             Sigmoid()
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.net(x)
 
 
@@ -102,7 +102,7 @@ class TestBinaryClassifier(unittest.TestCase):
         self.assertLess(avg_loss, initial_loss, "Custom model did not learn (loss didn't decrease).")
         self.assertGreater(self.custom_train_acc, 0.80, "Training accuracy too low.")
 
-    def test_predict_and_compare_with_pytorch(self):
+    def test_predict(self):
         # Custom framework fit
         for _ in range(self.num_epochs):
             for x_batch, y_batch in self.train_loader:

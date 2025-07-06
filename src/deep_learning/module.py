@@ -1,5 +1,6 @@
 import numpy as np
-from src.deep_learning.tensor import Tensor
+
+from deep_learning.tensor import Tensor
 
 
 class Module:
@@ -58,7 +59,7 @@ class Linear(Module):
 
 
 class ReLU(Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def forward(self, x: Tensor) -> Tensor:
@@ -66,7 +67,7 @@ class ReLU(Module):
     
 
 class Sigmoid(Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def forward(self, x: Tensor) -> Tensor:
@@ -74,7 +75,7 @@ class Sigmoid(Module):
     
 
 class Softmax(Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def forward(self, x: Tensor) -> Tensor:

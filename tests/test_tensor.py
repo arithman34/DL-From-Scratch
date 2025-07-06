@@ -1,9 +1,10 @@
 import unittest
 import numpy as np
-from src.deep_learning.backend import EPSILON
-from src.deep_learning.tensor import *
 import torch
 import torch.nn as nn
+
+from deep_learning.backend import EPSILON
+from deep_learning.tensor import *
 
 
 class TestTensorModule(unittest.TestCase):

@@ -1,5 +1,6 @@
 import numpy as np
-from src.deep_learning.backend import EPSILON
+
+from deep_learning.backend import EPSILON
 
 
 class Tensor:

@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Iterator, Tuple, Optional, Union, List
-from src.deep_learning.tensor import Tensor
+
+from deep_learning.tensor import Tensor
 
 
 class Dataset:
