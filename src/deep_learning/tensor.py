@@ -1,20 +1,25 @@
 import numpy as np
+from typing import Iterable, List, Optional, Union, Tuple, Any
+import numpy.typing as npt
 
 from deep_learning.backend import EPSILON
 
 
 class Tensor:
-    def __init__(self, data, requires_grad=False, depends_on=None, dtype=np.float64):
+    def __init__(self, data: Union[Iterable, npt.NDArray], requires_grad: bool = False, depends_on: Optional[List["Tensor"]] = None, dtype: np.dtype = np.float64) -> None:
+        """Initialize a Tensor object with data and the option to track gradients with autodiff."""
         self.data = np.asarray(data, dtype=dtype)
         self.requires_grad = requires_grad
         self.depends_on = depends_on or []
         self.grad = None
         self._grad_func = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """String representation of the Tensor."""
         return f"Tensor({self.data}, requires_grad={self.requires_grad})"
 
-    def backward(self, grad=None):
+    def backward(self, grad: Optional[npt.NDArray] = None) -> None:
+        """Compute the gradient of the tensor with respect to its dependencies."""
         if not self.requires_grad:
             return
 
@@ -25,7 +30,7 @@ class Tensor:
         topo_order = []
         visited = set()
 
-        def build_topo(tensor):
+        def build_topo(tensor: "Tensor") -> None:
             if tensor not in visited:
                 visited.add(tensor)
                 for parent in tensor.depends_on:
@@ -38,100 +43,128 @@ class Tensor:
             if tensor.requires_grad and tensor._grad_func is not None:
                 tensor._grad_func()
 
-    def zero_grad(self):
+    def zero_grad(self) -> None:
+        """Zero out the gradients of the tensor and its dependencies."""
         if self.requires_grad:
             self.grad = None
             for tensor in self.depends_on:
                 tensor.zero_grad()
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, ...]:
+        """Return the shape of the tensor."""
         return self.data.shape
     
     @property
-    def T(self):
+    def T(self) -> "Tensor":
+        """Return the transpose of the tensor."""
         return Transpose()(self)
     
     # Operator overloading
-    def __add__(self, other):
+    def __add__(self, other: "Tensor") -> "Tensor":
+        """Add two tensors."""
         return Add()(self, other)
     
-    def __iadd__(self, other):
+    def __iadd__(self, other: "Tensor") -> "Tensor":
+        """In-place addition of two tensors."""
         return Add()(other, self)
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Tensor") -> "Tensor":
+        """Subtract two tensors."""
         return Sub()(self, other)
     
-    def __isub__(self, other):
+    def __isub__(self, other: "Tensor") -> "Tensor":
+        """In-place subtraction of two tensors."""
         return Sub()(other, self)
 
-    def __neg__(self):
+    def __neg__(self) -> "Tensor":
+        """Negate the tensor."""
         return Neg()(self)
 
-    def __mul__(self, other):
+    def __mul__(self, other: "Tensor") -> "Tensor":
+        """Multiply two tensors."""
         return Mul()(self, other)
     
-    def __imul__(self, other):
+    def __imul__(self, other: "Tensor") -> "Tensor":
+        """In-place multiplication of two tensors."""
         return Mul()(other, self)
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: "Tensor") -> "Tensor":
+        """Matrix multiplication of two tensors."""
         return MatMul()(self, other)
     
-    def __imatmul__(self, other):
+    def __imatmul__(self, other: "Tensor") -> "Tensor":
+        """In-place matrix multiplication of two tensors."""
         return MatMul()(other, self)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: "Tensor") -> "Tensor":
+        """Divide two tensors."""
         return Div()(self, other)
     
-    def __itruediv__(self, other):
+    def __itruediv__(self, other: "Tensor") -> "Tensor":
+        """In-place division of two tensors."""
         return Div()(other, self)
     
-    def __pow__(self, power):
+    def __pow__(self, power: Union[int, float]) -> "Tensor":
+        """Raise the tensor to a power."""
         return Pow()(self, power)
     
-    def __ipow__(self, power):
+    def __ipow__(self, power: Union[int, float]) -> "Tensor":
+        """In-place exponentiation of the tensor."""
         return Pow()(self, power)
     
     # Functional operations
-    def exp(self):
+    def exp(self) -> "Tensor":
+        """Compute the exponential of the tensor."""
         return Exp()(self)
 
-    def log(self):
+    def log(self) -> "Tensor":
+        """Compute the natural logarithm of the tensor."""
         return Log()(self)
 
-    def relu(self):
+    def relu(self) -> "Tensor":
+        """Apply the ReLU activation function."""
         return ReLU()(self)
 
-    def sigmoid(self):
+    def sigmoid(self) -> "Tensor":
+        """Apply the Sigmoid activation function."""
         return Sigmoid()(self)
     
-    def softmax(self, axis=-1):
+    def softmax(self, axis: int = -1) -> "Tensor":
+        """Apply the Softmax activation function along a specified axis."""
         return Softmax()(self, axis)
 
-    def sum(self, axis=None, keepdims=False):
+    def sum(self, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> "Tensor":
+        """Compute the sum of the tensor along specified axes."""
         return Sum()(self, axis, keepdims)
 
-    def mean(self, axis=None, keepdims=False):
+    def mean(self, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> "Tensor":
+        """Compute the mean of the tensor along specified axes."""
         return Mean()(self, axis, keepdims)
     
-    def clip(self, min_val, max_val):
+    def clip(self, min_val: Union[int, float], max_val: Union[int, float]) -> "Tensor":
+        """Clip the tensor values to a specified range."""
         return Clip()(self, min_val, max_val)
     
-    def squeeze(self, axis=-1):
+    def squeeze(self, axis: int = -1) -> "Tensor":
+        """Remove dimensions of size 1 from the tensor."""
         return Squeeze()(self, axis)
 
-    def bce(self, targets):
+    def bce(self, targets: "Tensor") -> "Tensor":
+        """Compute the binary cross-entropy loss with respect to the targets."""
         return BCELoss()(self, targets)
     
-    def cross_entropy(self, targets):
+    def cross_entropy(self, targets: "Tensor") -> "Tensor":
+        """Compute the cross-entropy loss with respect to the targets."""
         return CrossEntropyLoss()(self, targets)
 
 
-def ensure_tensor(obj):
+def ensure_tensor(obj: Union["Tensor", Any]) -> "Tensor":
+    """Ensure that the input is a Tensor object, converting if necessary."""
     return obj if isinstance(obj, Tensor) else Tensor(obj)
 
 
-def unbroadcast(grad, shape):
+def unbroadcast(grad: npt.NDArray, shape: Tuple[int, ...]) -> npt.NDArray:
     """
     Reduce gradient to original shape by summing over broadcasted dimensions.
     This handles the inverse of NumPy broadcasting.
@@ -150,17 +183,19 @@ def unbroadcast(grad, shape):
 
 
 class Function:
-    def __call__(self, *args):
+    def __call__(self, *args: Any) -> Tensor:
+        """Call the function with the provided arguments."""
         raise NotImplementedError()
 
 
 class Add(Function):
-    def __call__(self, a, b):
+    def __call__(self, a: Union[Tensor, Any], b: Union[Tensor, Any]) -> Tensor:
+        """Add two tensors element-wise."""
         a, b = ensure_tensor(a), ensure_tensor(b)
         out = Tensor(a.data + b.data, requires_grad=a.requires_grad or b.requires_grad, dtype=a.data.dtype)
         out.depends_on = [a, b]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad_a = unbroadcast(out.grad, a.data.shape)
                 a.grad = a.grad + grad_a if a.grad is not None else grad_a
@@ -174,12 +209,13 @@ class Add(Function):
 
 
 class Sub(Function):
-    def __call__(self, a, b):
+    def __call__(self, a: Union[Tensor, Any], b: Union[Tensor, Any]) -> Tensor:
+        """Subtract two tensors element-wise."""
         a, b = ensure_tensor(a), ensure_tensor(b)
         out = Tensor(a.data - b.data, requires_grad=a.requires_grad or b.requires_grad, dtype=a.data.dtype)
         out.depends_on = [a, b]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad_a = unbroadcast(out.grad, a.data.shape)
                 a.grad = a.grad + grad_a if a.grad is not None else grad_a
@@ -192,12 +228,13 @@ class Sub(Function):
 
 
 class Neg(Function):
-    def __call__(self, a):
+    def __call__(self, a: Tensor) -> Tensor:
+        """Negate the tensor."""
         a = ensure_tensor(a)
         out = Tensor(-a.data, requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = -out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -207,12 +244,13 @@ class Neg(Function):
 
 
 class Mul(Function):
-    def __call__(self, a, b):
+    def __call__(self, a: Union[Tensor, Any], b: Union[Tensor, Any]) -> Tensor:
+        """Multiply two tensors element-wise."""
         a, b = ensure_tensor(a), ensure_tensor(b)
         out = Tensor(a.data * b.data, requires_grad=a.requires_grad or b.requires_grad, dtype=a.data.dtype)
         out.depends_on = [a, b]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad_a = unbroadcast(b.data * out.grad, a.data.shape)
                 a.grad = a.grad + grad_a if a.grad is not None else grad_a
@@ -225,12 +263,13 @@ class Mul(Function):
 
 
 class Div(Function):
-    def __call__(self, a, b):
+    def __call__(self, a: Union[Tensor, Any], b: Union[Tensor, Any]) -> Tensor:
+        """Divide two tensors element-wise."""
         a, b = ensure_tensor(a), ensure_tensor(b)
         out = Tensor(a.data / b.data, requires_grad=a.requires_grad or b.requires_grad, dtype=a.data.dtype)
         out.depends_on = [a, b]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad_a = unbroadcast(out.grad / b.data, a.data.shape)
                 a.grad = a.grad + grad_a if a.grad is not None else grad_a
@@ -243,12 +282,13 @@ class Div(Function):
 
 
 class MatMul(Function):
-    def __call__(self, a, b):
+    def __call__(self, a: Tensor, b: Tensor) -> Tensor:
+        """Matrix multiplication of two tensors."""
         a, b = ensure_tensor(a), ensure_tensor(b)
         out = Tensor(a.data @ b.data, requires_grad=a.requires_grad or b.requires_grad, dtype=a.data.dtype)
         out.depends_on = [a, b]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = out.grad @ b.data.T
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -261,12 +301,13 @@ class MatMul(Function):
 
 
 class Pow(Function):
-    def __call__(self, a, power):
+    def __call__(self, a: Tensor, power: Union[int, float]) -> Tensor:
+        """Raise the tensor to a power."""
         a = ensure_tensor(a)
         out = Tensor(a.data ** power, requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = power * (a.data ** (power - 1)) * out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -276,13 +317,14 @@ class Pow(Function):
 
 
 class Exp(Function):
-    def __call__(self, a):
+    def __call__(self, a: Tensor) -> Tensor:
+        """Compute the exponential of the tensor."""
         a = ensure_tensor(a)
         out_data = np.exp(a.data)
         out = Tensor(out_data, requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = out_data * out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -292,12 +334,13 @@ class Exp(Function):
 
 
 class Log(Function):
-    def __call__(self, a):
+    def __call__(self, a: Tensor) -> Tensor:
+        """Compute the natural logarithm of the tensor."""
         a = ensure_tensor(a)
         out = Tensor(np.log(a.data), requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = out.grad / a.data
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -307,12 +350,13 @@ class Log(Function):
 
 
 class ReLU(Function):
-    def __call__(self, a):
+    def __call__(self, a: Tensor) -> Tensor:
+        """Apply the ReLU activation function."""
         a = ensure_tensor(a)
         out = Tensor(np.maximum(0, a.data), requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = np.where(a.data > 0, out.grad, 0) * out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -322,13 +366,14 @@ class ReLU(Function):
 
 
 class Sigmoid(Function):
-    def __call__(self, a):
+    def __call__(self, a: Tensor) -> Tensor:
+        """Apply the Sigmoid activation function."""
         a = ensure_tensor(a)
         sig = 1 / (1 + np.exp(-a.data))
         out = Tensor(sig, requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad and out.grad is not None:
                 grad = sig * (1 - sig) * out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -338,14 +383,15 @@ class Sigmoid(Function):
     
 
 class Softmax(Function):
-    def __call__(self, a, axis=-1):
+    def __call__(self, a: Tensor, axis: int = -1) -> Tensor:
+        """Apply the Softmax activation function along a specified axis."""
         a = ensure_tensor(a)
         exp_a = np.exp(a.data - np.max(a.data, axis=axis, keepdims=True))
         softmax_data = exp_a / np.sum(exp_a, axis=axis, keepdims=True)
         out = Tensor(softmax_data, requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = softmax_data * (out.grad - np.sum(out.grad * softmax_data, axis=axis, keepdims=True))
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -355,12 +401,13 @@ class Softmax(Function):
 
 
 class Sum(Function):
-    def __call__(self, a, axis=None, keepdims=False):
+    def __call__(self, a: Tensor, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> Tensor:
+        """Compute the sum of the tensor along specified axes."""
         a = ensure_tensor(a)
         out = Tensor(a.data.sum(axis=axis, keepdims=keepdims), requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = out.grad
                 a_grad = np.ones_like(a.data) * grad
@@ -371,12 +418,13 @@ class Sum(Function):
 
 
 class Mean(Function):
-    def __call__(self, a, axis=None, keepdims=False):
+    def __call__(self, a: Tensor, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> Tensor:
+        """Compute the mean of the tensor along specified axes."""
         a = ensure_tensor(a)
         out = Tensor(a.data.mean(axis=axis, keepdims=keepdims), requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = out.grad
                 div = np.prod(a.data.shape if axis is None else np.array(a.data.shape)[axis])
@@ -388,12 +436,13 @@ class Mean(Function):
 
 
 class Transpose(Function):
-    def __call__(self, a):
+    def __call__(self, a: Tensor) -> Tensor:
+        """Transpose the tensor."""
         a = ensure_tensor(a)
         out = Tensor(a.data.T, requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 grad = out.grad.T
                 a.grad = a.grad + grad if a.grad is not None else grad
@@ -403,14 +452,15 @@ class Transpose(Function):
     
 
 class Clip(Function):
-    def __call__(self, a, min_val, max_val):
+    def __call__(self, a: Tensor, min_val: Union[int, float], max_val: Union[int, float]) -> Tensor:
+        """Clip the tensor values to a specified range."""
         a = ensure_tensor(a)
 
         clipped_data = np.clip(a.data, min_val, max_val)
         out = Tensor(clipped_data, requires_grad=a.requires_grad, dtype=a.data.dtype)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad:
                 # Gradient is passed through only where original data was not clipped
                 mask = (a.data >= min_val) & (a.data <= max_val)
@@ -422,7 +472,8 @@ class Clip(Function):
 
 
 class BCELoss(Function):
-    def __call__(self, preds, targets):
+    def __call__(self, preds: Tensor, targets: Tensor) -> Tensor:
+        """Compute the binary cross-entropy loss with respect to the targets."""
         preds = ensure_tensor(preds)
         targets = ensure_tensor(targets)
 
@@ -435,7 +486,7 @@ class BCELoss(Function):
         out = Tensor(loss, requires_grad=preds.requires_grad)
         out.depends_on = [preds, targets]
 
-        def _backward():
+        def _backward() -> None:
             if preds.requires_grad:
                 grad = (clipped - targets_flat) / (clipped * (1 - clipped) * targets_flat.size)
                 
@@ -448,7 +499,8 @@ class BCELoss(Function):
 
 
 class CrossEntropyLoss(Function):
-    def __call__(self, preds, targets):
+    def __call__(self, preds: Tensor, targets: Tensor) -> Tensor:
+        """Compute the cross-entropy loss with respect to the targets."""
         preds = ensure_tensor(preds)
         targets = ensure_tensor(targets)
 
@@ -459,7 +511,7 @@ class CrossEntropyLoss(Function):
         out = Tensor(loss, requires_grad=preds.requires_grad)
         out.depends_on = [preds, targets]
 
-        def _backward():
+        def _backward() -> None:
             if preds.requires_grad:
                 grad = np.zeros_like(preds.data)
                 # Compute the gradient w.r.t. the predicted probabilities
@@ -472,7 +524,8 @@ class CrossEntropyLoss(Function):
 
 
 class Squeeze(Function):
-    def __call__(self, a, axis=-1):
+    def __call__(self, a: Tensor, axis: int = -1) -> Tensor:
+        """Remove dimensions of size 1 from the tensor."""
         a = ensure_tensor(a)
         squeezed_data = a.data.squeeze(axis)
         # Ensure we don't squeeze away all dimensions for scalars
@@ -482,7 +535,7 @@ class Squeeze(Function):
         out = Tensor(squeezed_data, requires_grad=a.requires_grad)
         out.depends_on = [a]
 
-        def _backward():
+        def _backward() -> None:
             if a.requires_grad and out.grad is not None:
                 # Expand gradient back to original shape
                 grad = np.expand_dims(out.grad, axis)

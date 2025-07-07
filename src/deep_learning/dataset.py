@@ -6,18 +6,22 @@ from deep_learning.tensor import Tensor
 
 class Dataset:
     def __init__(self, inputs: Union[np.ndarray, List], targets: Union[np.ndarray, List]):
+        """Initialize the dataset with inputs and targets."""
         self.inputs = np.asarray(inputs)
         self.targets = np.asarray(targets)
     
     def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
         return len(self.inputs)
     
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
+        """Get a single sample from the dataset."""
         return Tensor(self.inputs[index]), Tensor(self.targets[index])
 
 
 class DataLoader:
     def __init__(self, dataset: Dataset, batch_size: int = 1, shuffle: bool = False, drop_last: bool = False, random_state: Optional[int] = None):
+        """Initialize the DataLoader with a dataset, batch size, and options for shuffling and dropping the last batch."""
         self.dataset = dataset
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -28,12 +32,14 @@ class DataLoader:
             np.random.seed(random_state)
     
     def __len__(self) -> int:
+        """Return the number of batches in the DataLoader."""
         if self.drop_last:
             return len(self.dataset) // self.batch_size
         else:
             return (len(self.dataset) + self.batch_size - 1) // self.batch_size
     
     def __iter__(self) -> Iterator[Tuple[Tensor, ...]]:
+        """Yield batches of data from the dataset."""
         indices = list(range(len(self.dataset)))
         
         if self.shuffle:

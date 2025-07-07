@@ -5,25 +5,29 @@ from deep_learning.backend import EPSILON
 
 
 class Optimizer:
-    def __init__(self, parameters: list[Tensor], lr: float=0.01) -> None:
+    def __init__(self, parameters: list[Tensor], lr: float = 0.01) -> None:
+        """Initialize the optimizer with parameters and learning rate."""
         self.parameters = parameters
         self.lr = lr
 
     def zero_grad(self) -> None:
+        """Zero out the gradients of all parameters."""
         for param in self.parameters:
             if param.grad is not None:
                 param.grad = None
 
     def step(self) -> None:
+        """Perform a single optimization step."""
         raise NotImplementedError("Optimizer step() method must be overridden.")
-
 
 
 class SGD(Optimizer):
     def __init__(self, parameters: list[Tensor], lr: float = 0.01) -> None:
+        """Initialize the SGD optimizer with parameters and learning rate."""
         super().__init__(parameters, lr)
 
     def step(self) -> None:
+        """Perform a single optimization step using SGD."""
         for param in self.parameters:
             if param.grad is not None:
                 param.data -= self.lr * np.array(param.grad)
@@ -31,6 +35,7 @@ class SGD(Optimizer):
 
 class Adam(Optimizer):
     def __init__(self, parameters: list[Tensor], lr: float = 0.01, beta1: float = 0.9, beta2: float = 0.999, epsilon: float = EPSILON) -> None:
+        """Initialize the Adam optimizer with parameters, learning rate, and hyperparameters."""
         super().__init__(parameters, lr)
         self.beta1 = beta1
         self.beta2 = beta2
@@ -40,6 +45,7 @@ class Adam(Optimizer):
         self.t = 0
 
     def step(self) -> None:
+        """Perform a single optimization step using Adam."""
         self.t += 1
         for i, param in enumerate(self.parameters):
             if param.grad is not None:
