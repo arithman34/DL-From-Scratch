@@ -164,6 +164,17 @@ class TestTensorModule(unittest.TestCase):
         # Check the result of ReLU operation
         np.testing.assert_array_equal(y.data, torch_y.numpy())
 
+    def test_tensor_tanh(self):
+        # Test the Tanh operation
+        x = Tensor(np.array([-1.0, 0.0, 1.0]), requires_grad=False)
+        torch_x = torch.tensor(x.data, requires_grad=False)
+
+        y = x.tanh()
+        torch_y = torch_x.tanh()
+
+        # Check the result of Tanh operation
+        np.testing.assert_array_almost_equal(y.data, torch_y.numpy())
+
     def test_tensor_sigmoid(self):
         # Test the sigmoid operation
         x = Tensor(np.array([-1.0, 0.0, 1.0]), requires_grad=False)
@@ -431,6 +442,24 @@ class TestTensorModule(unittest.TestCase):
 
         # Check that gradients are computed correctly
         np.testing.assert_array_equal(x.grad, torch_x.grad.numpy())
+
+    def test_tensor_tanh_backward(self):
+        # Test backward propagation of gradients for Tanh operation
+        x = Tensor(np.array([-1.0, 0.0, 1.0]), requires_grad=True)
+        torch_x = torch.tensor(x.data, requires_grad=True)
+
+        y = x.tanh()
+        torch_y = torch_x.tanh()
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_almost_equal(x.grad, torch_x.grad.numpy())
 
     def test_tensor_sigmoid_backward(self):
         # Test backward propagation of gradients for sigmoid operation

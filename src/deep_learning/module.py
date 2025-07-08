@@ -67,6 +67,12 @@ class Linear(Module):
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the linear layer."""
         return x @ self.weights + self.bias
+    
+
+# TODO: Add dropout layer for regularization
+# TODO: Add reshape layer
+# TODO: Add batch normalization layer
+# TODO: Add conv1d, conv2d layers
 
 
 class ReLU(Module):
@@ -77,7 +83,17 @@ class ReLU(Module):
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the ReLU activation."""
         return x.relu()
-    
+
+
+class Tanh(Module):
+    def __init__(self) -> None:
+        """Initialize a Tanh activation module."""
+        super().__init__()
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward pass through the Tanh activation."""
+        return x.tanh()
+
 
 class Sigmoid(Module):
     def __init__(self) -> None:

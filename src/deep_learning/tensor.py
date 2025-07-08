@@ -125,6 +125,10 @@ class Tensor:
     def relu(self) -> "Tensor":
         """Apply the ReLU activation function."""
         return ReLU()(self)
+    
+    def tanh(self) -> "Tensor":
+        """Apply the Tanh activation function."""
+        return Tanh()(self)
 
     def sigmoid(self) -> "Tensor":
         """Apply the Sigmoid activation function."""
@@ -359,6 +363,23 @@ class ReLU(Function):
         def _backward() -> None:
             if a.requires_grad:
                 grad = np.where(a.data > 0, out.grad, 0) * out.grad
+                a.grad = a.grad + grad if a.grad is not None else grad
+
+        out._grad_func = _backward
+        return out
+    
+
+class Tanh(Function):
+    def __call__(self, a: Tensor) -> Tensor:
+        """Apply the Tanh activation function."""
+        a = ensure_tensor(a)
+        tanh_data = np.tanh(a.data)
+        out = Tensor(tanh_data, requires_grad=a.requires_grad)
+        out.depends_on = [a]
+
+        def _backward() -> None:
+            if a.requires_grad:
+                grad = (1 - tanh_data ** 2) * out.grad
                 a.grad = a.grad + grad if a.grad is not None else grad
 
         out._grad_func = _backward
