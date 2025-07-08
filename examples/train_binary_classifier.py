@@ -2,8 +2,9 @@ import numpy as np
 
 from deep_learning.dataset import Dataset, DataLoader
 from deep_learning.module import Module, Linear, ReLU, Sigmoid, Sequential
-from deep_learning.optimizers import SGD
-from deep_learning.tensor import Tensor, BCELoss
+from deep_learning.optimizers import Adam
+from deep_learning.loss import *
+from deep_learning.tensor import Tensor
 from data.data_generator import get_classification_data
 
 
@@ -52,10 +53,13 @@ def train_binary_classifier():
     model = BinaryClassifier(in_features=num_features, hidden_features=64, out_features=1)
     
     # Optimizer
-    optimizer = SGD(model.parameters, lr=0.01)
+    optimizer = Adam(model.parameters, lr=0.001)
 
     # Criterion
     criterion = BCELoss()
+
+    train_losses = []
+    train_accuracies = []
 
     # Training loop
     for epoch in range(num_epochs):
@@ -78,6 +82,9 @@ def train_binary_classifier():
 
         avg_loss = total_loss / total_samples
         accuracy = total_correct / total_samples
+
+        train_losses.append(avg_loss)
+        train_accuracies.append(accuracy)
 
         print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
 

@@ -2,6 +2,7 @@ import numpy as np
 from typing import Any
 
 from deep_learning.tensor import Tensor
+from deep_learning import functional as F
 
 
 class Module:
@@ -60,13 +61,14 @@ class Linear(Module):
     def __init__(self, in_features: int, out_features: int) -> None:
         """Initialize a Linear layer with weights and bias."""
         super().__init__()
-        self.weights = Tensor(np.random.randn(in_features, out_features) * np.sqrt(2. / in_features), requires_grad=True, dtype=np.float64)  # He initialization
+        self.weight = Tensor(np.random.randn(in_features, out_features) * np.sqrt(2. / in_features), requires_grad=True, dtype=np.float64)  # He initialization
         self.bias = Tensor(np.zeros((out_features,)), requires_grad=True, dtype=np.float64)
-        self._parameters = [self.weights, self.bias]
+
+        self._parameters = [self.weight, self.bias]
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the linear layer."""
-        return x @ self.weights + self.bias
+        return F.linear(x, self.weight, self.bias)
     
 
 # TODO: Add dropout layer for regularization
@@ -82,7 +84,7 @@ class ReLU(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the ReLU activation."""
-        return x.relu()
+        return F.relu(x)
 
 
 class Tanh(Module):
@@ -92,7 +94,7 @@ class Tanh(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the Tanh activation."""
-        return x.tanh()
+        return F.tanh(x)
 
 
 class Sigmoid(Module):
@@ -102,7 +104,7 @@ class Sigmoid(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the Sigmoid activation."""
-        return x.sigmoid()
+        return F.sigmoid(x)
     
 
 class Softmax(Module):
@@ -112,4 +114,4 @@ class Softmax(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the Softmax activation."""
-        return x.softmax(axis=-1)
+        return F.softmax(x, axis=-1)

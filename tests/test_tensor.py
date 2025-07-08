@@ -2,9 +2,10 @@ import unittest
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as torch_F
 
-from deep_learning.backend import EPSILON
-from deep_learning.tensor import *
+from deep_learning.tensor import Tensor
+from deep_learning import functional as F
 
 
 class TestTensorModule(unittest.TestCase):
@@ -51,7 +52,7 @@ class TestTensorModule(unittest.TestCase):
         torch_x = torch.tensor(x.data, requires_grad=False)
         torch_y = torch.tensor(y.data, requires_grad=False)
 
-        z = x + y  # z = x + y
+        z = x + y
         torch_z = torch_x + torch_y
 
         # Check the result of the addition
@@ -136,7 +137,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([1.0, 2.0]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.exp()
+        y = F.exp(x)
         torch_y = torch_x.exp()
 
         # Check the result of exponential operation
@@ -147,7 +148,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([1.0, 2.0, np.e]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.log()
+        y = F.log(x)
         torch_y = torch_x.log()
 
         # Check the result of logarithm operation
@@ -158,7 +159,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([-1.0, 0.0, 1.0, 2.0]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.relu()
+        y = F.relu(x)
         torch_y = torch_x.relu()
 
         # Check the result of ReLU operation
@@ -169,7 +170,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([-1.0, 0.0, 1.0]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.tanh()
+        y = F.tanh(x)
         torch_y = torch_x.tanh()
 
         # Check the result of Tanh operation
@@ -180,7 +181,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([-1.0, 0.0, 1.0]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.sigmoid()
+        y = F.sigmoid(x)
         torch_y = torch_x.sigmoid()
 
         # Check the result of sigmoid operation
@@ -191,7 +192,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.softmax(axis=1)
+        y = F.softmax(x, axis=1)
         torch_y = torch_x.softmax(dim=1)
 
         # Check the result of softmax operation
@@ -201,7 +202,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.sum()
+        y = F.sum(x)
         torch_y = torch_x.sum()
         # Check the result of sum operation
         np.testing.assert_array_equal(y.data, torch_y.numpy())
@@ -211,7 +212,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=False)
         torch_x = torch.tensor(x.data, requires_grad=False)
 
-        y = x.mean()
+        y = F.mean(x)
         torch_y = torch_x.mean()
 
         # Check the result of mean operation
@@ -225,7 +226,7 @@ class TestTensorModule(unittest.TestCase):
         torch_y_true = torch.tensor(y_true.data, requires_grad=False)
         torch_y_pred = torch.tensor(y_pred.data, requires_grad=False)
 
-        loss = y_pred.bce(y_true)
+        loss = F.binary_cross_entropy(y_pred, y_true)
         torch_loss = nn.BCELoss()(torch_y_pred, torch_y_true)
 
         # Check the result of BCE loss
@@ -240,9 +241,9 @@ class TestTensorModule(unittest.TestCase):
         torch_y_pred = torch.tensor(y_pred.data, dtype=torch.float64)
 
         # Compute loss using custom cross-entropy function
-        softmax_y_pred = y_pred.softmax(axis=1)  # Convert predictions to probabilities
+        softmax_y_pred = F.softmax(y_pred)  # Convert predictions to probabilities
 
-        loss = softmax_y_pred.cross_entropy(y_true)
+        loss = F.cross_entropy(softmax_y_pred, y_true)
         torch_loss = nn.CrossEntropyLoss()(torch_y_pred, torch_y_true)
 
         # Check the result of cross-entropy loss
@@ -394,7 +395,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([1.0, 2.0]), requires_grad=True)
         torch_x = torch.tensor(x.data, requires_grad=True)
 
-        y = x.exp()
+        y = F.exp(x)
         torch_y = torch_x.exp()
 
         # Sum the output to reduce it to a scalar
@@ -412,7 +413,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([1.0, 2.0, np.e]), requires_grad=True)
         torch_x = torch.tensor(x.data, requires_grad=True)
 
-        y = x.log()
+        y = F.log(x)
         torch_y = torch_x.log()
 
         # Sum the output to reduce it to a scalar
@@ -430,8 +431,8 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([-1.0, 0.0, 1.0, 2.0]), requires_grad=True)
         torch_x = torch.tensor(x.data, requires_grad=True)
 
-        y = x.relu()
-        torch_y = torch_x.relu()
+        y = F.relu(x)
+        torch_y = torch_F.relu(torch_x)
 
         # Sum the output to reduce it to a scalar
         torch_y_sum = torch_y.sum()
@@ -448,8 +449,8 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([-1.0, 0.0, 1.0]), requires_grad=True)
         torch_x = torch.tensor(x.data, requires_grad=True)
 
-        y = x.tanh()
-        torch_y = torch_x.tanh()
+        y = F.tanh(x)
+        torch_y = torch_F.tanh(torch_x)
 
         # Sum the output to reduce it to a scalar
         torch_y_sum = torch_y.sum()
@@ -466,8 +467,8 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([-1.0, 0.0, 1.0]), requires_grad=True)
         torch_x = torch.tensor(x.data, requires_grad=True)
 
-        y = x.sigmoid()
-        torch_y = torch_x.sigmoid()
+        y = F.sigmoid(x)
+        torch_y = torch_F.sigmoid(torch_x)
 
         # Sum the output to reduce it to a scalar
         torch_y_sum = torch_y.sum()
@@ -484,7 +485,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=True)
         torch_x = torch.tensor(x.data, requires_grad=True)
 
-        y = x.sum()
+        y = F.sum(x)
         torch_y = torch_x.sum()
 
         # Call backward() to calculate gradients
@@ -499,7 +500,7 @@ class TestTensorModule(unittest.TestCase):
         x = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=True)
         torch_x = torch.tensor(x.data, requires_grad=True)
 
-        y = x.mean()
+        y = F.mean(x)
         torch_y = torch_x.mean()
 
         # Call backward() to calculate gradients
@@ -516,8 +517,8 @@ class TestTensorModule(unittest.TestCase):
         torch_y_true = torch.tensor(y_true.data, requires_grad=False)
         torch_y_pred = torch.tensor(y_pred.data, requires_grad=True)
 
-        loss = y_pred.bce(y_true)
-        torch_loss = nn.BCELoss()(torch_y_pred, torch_y_true)
+        loss = F.binary_cross_entropy(y_pred, y_true)
+        torch_loss = torch_F.binary_cross_entropy(torch_y_pred, torch_y_true)
 
         # Call backward() to calculate gradients
         loss.backward()
@@ -534,10 +535,10 @@ class TestTensorModule(unittest.TestCase):
         torch_y_pred = torch.tensor(y_pred.data, requires_grad=True, dtype=torch.float64)
 
         # Compute loss using custom cross-entropy function
-        softmax_y_pred = y_pred.softmax(axis=1)  # Convert predictions to probabilities
+        softmax_y_pred = F.softmax(y_pred)  # Convert predictions to probabilities
 
-        loss = softmax_y_pred.cross_entropy(y_true)
-        torch_loss = nn.CrossEntropyLoss()(torch_y_pred, torch_y_true)
+        loss = F.cross_entropy(softmax_y_pred, y_true)
+        torch_loss = torch_F.cross_entropy(torch_y_pred, torch_y_true)
 
         # Call backward() to calculate gradients
         loss.backward()

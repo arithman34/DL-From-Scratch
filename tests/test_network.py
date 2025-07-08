@@ -5,10 +5,11 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 
-from deep_learning.tensor import *
-from deep_learning.module import *
+from deep_learning.tensor import Tensor
+from deep_learning.module import Module, Sequential, Linear, ReLU, Sigmoid
 from deep_learning.dataset import Dataset, DataLoader
-from deep_learning.optimizers import *
+from deep_learning.optimizers import SGD
+from deep_learning.loss import BCELoss
 from data.data_generator import get_classification_data
 
 
