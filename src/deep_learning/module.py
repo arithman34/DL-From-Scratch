@@ -71,7 +71,18 @@ class Linear(Module):
         return F.linear(x, self.weight, self.bias)
     
 
-# TODO: Add dropout layer for regularization
+class Dropout(Module):
+    def __init__(self, p: float = 0.5) -> None:
+        """Initialize a Dropout layer with a dropout probability."""
+        super().__init__()
+        self.p = p
+
+    def forward(self, x: Tensor, training: bool = True) -> Tensor:
+        """Forward pass through the dropout layer."""
+        return F.dropout(x, self.p, training)
+
+
+# FIXME: Freeze gradient tracking during inference
 # TODO: Add reshape layer
 # TODO: Add batch normalization layer
 # TODO: Add conv1d, conv2d layers

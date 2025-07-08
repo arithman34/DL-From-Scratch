@@ -6,7 +6,7 @@ import torch.optim as optim
 import torch.utils.data as data
 
 from deep_learning.tensor import Tensor
-from deep_learning.module import Module, Sequential, Linear, ReLU, Sigmoid
+from deep_learning.module import Module, Sequential, Linear, ReLU, Dropout, Sigmoid
 from deep_learning.dataset import Dataset, DataLoader
 from deep_learning.optimizers import SGD
 from deep_learning.loss import BCELoss
@@ -19,6 +19,7 @@ class BinaryClassifier(Module):
         self.net = Sequential(
             Linear(in_features, hidden_features),
             ReLU(),
+            Dropout(p=0.3),
             Linear(hidden_features, out_features),
             Sigmoid()
         )
@@ -132,6 +133,7 @@ class TestBinaryClassifier(unittest.TestCase):
                 self.net = nn.Sequential(
                     nn.Linear(in_features, 64),
                     nn.ReLU(),
+                    nn.Dropout(p=0.3),
                     nn.Linear(64, 1),
                     nn.Sigmoid()
                 )

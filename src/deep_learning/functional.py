@@ -313,6 +313,54 @@ def softmax(input, axis: int = -1):
     return out
 
 
+# Regularization functions
+def dropout(input, p: float = 0.5, training: bool = True):
+    """Apply dropout regularization to the input tensor."""
+    from deep_learning.tensor import Tensor
+
+    input = ensure_tensor(input)
+
+    if p < 0.0 or p > 1.0:
+        raise ValueError(f"Dropout probability p must be in [0, 1], got {p}")
+    
+    if not training or p == 0.0:
+        # During inference or when p=0, return input unchanged
+        return input
+    
+    if p == 1.0:
+        # When p=1, zero out everything
+        out_data = np.zeros_like(input.data)
+        out = Tensor(out_data, requires_grad=input.requires_grad)
+        out.depends_on = [input]
+        
+        def _backward() -> None:
+            if input.requires_grad:
+                # Gradient is zero everywhere since output is zero
+                grad = np.zeros_like(input.data)
+                input.grad = input.grad + grad if input.grad is not None else grad
+        
+        out._grad_func = _backward
+        return out
+    
+    # Generate random mask
+    keep_prob = 1.0 - p
+    mask = np.random.binomial(1, keep_prob, size=input.data.shape) / keep_prob
+    
+    # Apply mask and scale by 1/keep_prob to maintain expected value
+    out_data = input.data * mask
+    out = Tensor(out_data, requires_grad=input.requires_grad)
+    out.depends_on = [input]
+    
+    def _backward() -> None:
+        if input.requires_grad:
+            # Gradient backpropagates only where mask is non-zero
+            grad = out.grad * mask
+            input.grad = input.grad + grad if input.grad is not None else grad
+    
+    out._grad_func = _backward
+    return out
+
+
 # Reduction operations
 def sum(input, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     """Compute the sum of the tensor along specified axes."""
