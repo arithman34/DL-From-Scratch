@@ -10,6 +10,7 @@ class Module:
         """Initialize the Module."""
         self._parameters = []
         self._modules = {}
+        self.training = True  # Default to training mode
 
     def __call__(self, *args, **kwargs) -> Tensor:
         """Call the forward method of the module."""
@@ -42,6 +43,26 @@ class Module:
             params += module._parameters
         return params
     
+    def train(self, mode: bool = True) -> "Module":
+        """Set the module in training mode."""
+        self.training = mode
+        for module in self._modules.values():
+            module.train(mode)
+        
+        # Some modules may have parameters that were set to not require gradients so we need to maintain that state when switching modes.
+        for param in self.parameters:
+            param._original_requires_grad = getattr(param, '_original_requires_grad', param.requires_grad)
+            if mode:
+                param.requires_grad = param._original_requires_grad
+            else:
+                param.requires_grad = False
+        
+        return self
+
+    def eval(self) -> "Module":
+        """Set the module in evaluation mode."""
+        return self.train(False)
+
 
 class Sequential(Module):
     def __init__(self, *args: Module) -> None:
@@ -77,12 +98,11 @@ class Dropout(Module):
         super().__init__()
         self.p = p
 
-    def forward(self, x: Tensor, training: bool = True) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the dropout layer."""
-        return F.dropout(x, self.p, training)
+        return F.dropout(x, self.p, self.training)
 
 
-# FIXME: Freeze gradient tracking during inference
 # TODO: Add reshape layer
 # TODO: Add batch normalization layer
 # TODO: Add conv1d, conv2d layers

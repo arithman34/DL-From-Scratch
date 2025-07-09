@@ -73,6 +73,7 @@ class TestBinaryClassifier(unittest.TestCase):
 
     def test_fit(self):
         initial_loss = None
+        self.model.train()  # Set model to training mode
         for epoch in range(self.num_epochs):
             total_loss = 0.0
             total_correct = 0
@@ -106,6 +107,7 @@ class TestBinaryClassifier(unittest.TestCase):
 
     def test_predict(self):
         # Custom framework fit
+        self.model.train()  # Set model to training mode
         for _ in range(self.num_epochs):
             for x_batch, y_batch in self.train_loader:
                 self.optimizer.zero_grad()
@@ -117,6 +119,7 @@ class TestBinaryClassifier(unittest.TestCase):
         # Custom framework prediction
         test_correct = 0
         test_total = 0
+        self.model.eval()  # Set model to evaluation mode
         for x_batch, y_batch in self.test_loader:
             outputs = self.model(x_batch)
             preds = (outputs.data > 0.5).astype(int).squeeze(-1)
@@ -156,8 +159,8 @@ class TestBinaryClassifier(unittest.TestCase):
         torch_optimizer = optim.SGD(torch_model.parameters(), lr=0.01)
         torch_criterion = nn.BCELoss()
 
+        torch_model.train()
         for _ in range(self.num_epochs):
-            torch_model.train()
             for X_batch, y_batch in torch_train_loader:
                 torch_optimizer.zero_grad()
                 outputs = torch_model(X_batch).squeeze(-1)
