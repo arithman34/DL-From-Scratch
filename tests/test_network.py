@@ -36,7 +36,7 @@ class TestBinaryClassifier(unittest.TestCase):
         self.num_samples = 1000
         self.num_features = 5
         self.batch_size = 64
-        self.num_epochs = 1000
+        self.num_epochs = 100
 
         # Data
         X_train, X_test, y_train, y_test = get_classification_data(

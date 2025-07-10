@@ -154,6 +154,22 @@ class TestTensorModule(unittest.TestCase):
         # Check the result of logarithm operation
         np.testing.assert_array_equal(y.data, torch_y.numpy())
 
+    def test_tensor_linear(self):
+        # Test the linear operation
+        x = Tensor(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), requires_grad=False)
+        weight = Tensor(np.array([[1.0, 0.0, 2.0], [0.0, -1.0, -0.5]]), requires_grad=False)
+        bias = Tensor(np.array([1.0, 1.0]), requires_grad=False)
+
+        torch_x = torch.tensor(x.data, requires_grad=False)
+        torch_weight = torch.tensor(weight.data, requires_grad=False)
+        torch_bias = torch.tensor(bias.data, requires_grad=False)
+
+        y = F.linear(x, weight, bias)
+        torch_y = torch_F.linear(torch_x, torch_weight, torch_bias)
+
+        # Check the result of linear operation
+        np.testing.assert_array_equal(y.data, torch_y.numpy())
+
     def test_tensor_relu(self):
         # Test the ReLU operation
         x = Tensor(np.array([-1.0, 0.0, 1.0, 2.0]), requires_grad=False)
@@ -197,6 +213,38 @@ class TestTensorModule(unittest.TestCase):
 
         # Check the result of softmax operation
         np.testing.assert_array_almost_equal(y.data, torch_y.numpy())
+
+    def test_tensor_conv2d(self):
+        # Test the 2D convolution operation
+        x = Tensor(np.random.randn(1, 3, 5, 5), requires_grad=False)  # Input tensor (batch_size, channels, height, width)
+        weight = Tensor(np.random.randn(2, 3, 3, 3), requires_grad=False)  # Weight tensor (out_channels, in_channels, kernel_height, kernel_width)
+        bias = Tensor(np.random.randn(2), requires_grad=False)  # Bias tensor (out_channels)
+
+        torch_x = torch.tensor(x.data, requires_grad=False)
+        torch_weight = torch.tensor(weight.data, requires_grad=False)
+        torch_bias = torch.tensor(bias.data, requires_grad=False)
+
+        y = F.conv2d(x, weight, bias)
+        torch_y = torch_F.conv2d(torch_x, torch_weight, torch_bias, stride=1, padding=0, dilation=1)
+
+        # Check the result of convolution operation
+        np.testing.assert_array_almost_equal(y.data, torch_y.numpy(), decimal=6)
+
+    def test_tensor_dropout(self):
+        # Test the dropout operation
+        np.random.seed(42)  # For reproducibility
+        torch.manual_seed(42)  # For reproducibility in PyTorch
+        x = Tensor(np.random.rand(1000, 1000), requires_grad=False)
+        torch_x = torch.tensor(x.data, requires_grad=False)
+
+        p = 0.5
+
+        y = F.dropout(x, p=p, training=True)
+        torch_y = torch_F.dropout(torch_x, p=p, training=True)
+
+        # Check the proportion of zero elements in the output is approximately equal to the torch version
+        np.testing.assert_almost_equal(np.mean(y.data == 0), np.mean(torch_y.numpy() == 0), decimal=2)
+
     def test_tensor_sum(self):
         # Test the sum operation
         x = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=False)
@@ -204,6 +252,7 @@ class TestTensorModule(unittest.TestCase):
 
         y = F.sum(x)
         torch_y = torch_x.sum()
+
         # Check the result of sum operation
         np.testing.assert_array_equal(y.data, torch_y.numpy())
 
@@ -426,6 +475,31 @@ class TestTensorModule(unittest.TestCase):
         # Check that gradients are computed correctly
         np.testing.assert_array_equal(x.grad, torch_x.grad.numpy())
 
+    def test_tensor_linear_backward(self):
+        # Test backward propagation of gradients for linear operation
+        x = Tensor(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), requires_grad=True)
+        weight = Tensor(np.array([[1.0, 0.0, 2.0], [0.0, -1.0, -0.5]]), requires_grad=True)
+        bias = Tensor(np.array([1.0, 1.0]), requires_grad=True)
+
+        torch_x = torch.tensor(x.data, requires_grad=True)
+        torch_weight = torch.tensor(weight.data, requires_grad=True)
+        torch_bias = torch.tensor(bias.data, requires_grad=True)
+
+        y = F.linear(x, weight, bias)
+        torch_y = torch_F.linear(torch_x, torch_weight, torch_bias)
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_equal(x.grad, torch_x.grad.numpy())
+        np.testing.assert_array_equal(weight.grad, torch_weight.grad.numpy())
+        np.testing.assert_array_equal(bias.grad, torch_bias.grad.numpy())
+
     def test_tensor_relu_backward(self):
         # Test backward propagation of gradients for ReLU operation
         x = Tensor(np.array([-1.0, 0.0, 1.0, 2.0]), requires_grad=True)
@@ -479,6 +553,74 @@ class TestTensorModule(unittest.TestCase):
 
         # Check that gradients are computed correctly
         np.testing.assert_array_almost_equal(x.grad, torch_x.grad.numpy())
+
+    def test_tensor_softmax_backward(self):
+        # Test backward propagation of gradients for softmax operation
+        x = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=True)
+        torch_x = torch.tensor(x.data, requires_grad=True)
+
+        y = F.softmax(x, axis=1)
+        torch_y = torch_F.softmax(torch_x, dim=1)
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_almost_equal(x.grad, torch_x.grad.numpy())
+
+    def test_tensor_conv2d_backward(self):
+        # Test backward propagation of gradients for 2D convolution
+        x = Tensor(np.random.randn(1, 3, 5, 5), requires_grad=True)  # Input tensor (batch_size, channels, height, width)
+        weight = Tensor(np.random.randn(2, 3, 3, 3), requires_grad=True)  # Weight tensor (out_channels, in_channels, kernel_height, kernel_width)
+        bias = Tensor(np.random.randn(2), requires_grad=True)  # Bias tensor (out_channels)
+
+        torch_x = torch.tensor(x.data, requires_grad=True)
+        torch_weight = torch.tensor(weight.data, requires_grad=True)
+        torch_bias = torch.tensor(bias.data, requires_grad=True)
+
+        y = F.conv2d(x, weight, bias)
+        torch_y = torch_F.conv2d(torch_x, torch_weight, torch_bias, stride=1, padding=0, dilation=1)
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_almost_equal(x.grad, torch_x.grad.numpy())
+        np.testing.assert_array_almost_equal(weight.grad, torch_weight.grad.numpy())
+        np.testing.assert_array_almost_equal(bias.grad, torch_bias.grad.numpy())
+
+    def test_tensor_dropout_backward(self):
+        # Test backward propagation of gradients for dropout
+        x = Tensor(np.random.rand(1000, 1000), requires_grad=True)
+        torch_x = torch.tensor(x.data, requires_grad=True)
+
+        p = 0.5
+
+        y = F.dropout(x, p=p, training=True)
+        torch_y = torch_F.dropout(torch_x, p=p, training=True)
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Get the dropout masks
+        y_mask = y.data != 0
+        torch_mask = torch_y.detach().numpy() != 0
+        combined_mask = y_mask & torch_mask
+
+        # Ensure that the gradients are only compared for non-zero elements
+        np.testing.assert_array_almost_equal(x.grad[combined_mask], torch_x.grad[combined_mask].numpy())
 
     def test_tensor_sum_backward(self):
         # Test backward propagation of gradients for sum operation

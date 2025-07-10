@@ -11,7 +11,7 @@ class TestModule(unittest.TestCase):
 
     def test_linear_initialization(self):
         linear = Linear(5, 10)
-        self.assertEqual(linear.weight.shape, (5, 10))
+        self.assertEqual(linear.weight.shape, (10, 5))
         self.assertEqual(linear.bias.shape, (10,))
         self.assertTrue(linear.weight.requires_grad)
         self.assertTrue(linear.bias.requires_grad)

@@ -3,6 +3,7 @@ from typing import Optional, Union, Tuple
 import numpy.typing as npt
 
 from deep_learning.backend import EPSILON
+from deep_learning.utils import correlate2d, convolve2d
 
 Number = Union[int, float]
 
@@ -215,9 +216,9 @@ def linear(input, weight, bias=None):
     
     if bias is not None:
         bias = ensure_tensor(bias)
-        out_data = input.data @ weight.data + bias.data
+        out_data = input.data @ weight.data.T + bias.data
     else:
-        out_data = input.data @ weight.data
+        out_data = input.data @ weight.data.T
     
     out = Tensor(out_data, requires_grad=input.requires_grad or weight.requires_grad or (bias.requires_grad if bias is not None else False))
     out.depends_on = [input, weight]
@@ -227,15 +228,16 @@ def linear(input, weight, bias=None):
 
     def _backward() -> None:
         if input.requires_grad:
-            grad_input = out.grad @ weight.data.T
+            grad_input = out.grad @ weight.data
             input.grad = input.grad + grad_input if input.grad is not None else grad_input
         
         if weight.requires_grad:
-            grad_weight = input.data.T @ out.grad
+            grad_weight = out.grad.T @ input.data
             weight.grad = weight.grad + grad_weight if weight.grad is not None else grad_weight
         
         if bias is not None and bias.requires_grad:
-            bias.grad = bias.grad + np.sum(out.grad, axis=0) if bias.grad is not None else np.sum(out.grad, axis=0)
+            grad_bias = np.sum(out.grad, axis=0)
+            bias.grad = bias.grad + grad_bias if bias.grad is not None else grad_bias
 
     out._grad_func = _backward
     return out
@@ -308,6 +310,82 @@ def softmax(input, axis: int = -1):
         if input.requires_grad:
             grad = softmax_data * (out.grad - np.sum(out.grad * softmax_data, axis=axis, keepdims=True))
             input.grad = input.grad + grad if input.grad is not None else grad
+
+    out._grad_func = _backward
+    return out
+
+
+# Feature extraction functions
+def conv2d(input, weight, bias=None):
+    """
+    Perform 2D convolution on input with stride=1, dilation=1, padding=0. 
+    See: https://www.youtube.com/watch?v=Lakz2MoHy6o&t
+    """
+    from deep_learning.tensor import Tensor
+    # TOOO: Add support for stride, dilation, and padding
+
+    input = ensure_tensor(input)
+    weight = ensure_tensor(weight)
+
+    batch_size, in_channels, in_height, in_width = input.data.shape
+    out_channels, weight_in_channels, kernel_height, kernel_width = weight.data.shape
+
+    if bias is not None:
+        if bias.data.shape != (out_channels,):
+            raise ValueError(f"Bias shape {bias.data.shape} must match output channels {out_channels}")
+        bias = ensure_tensor(bias)
+
+    if weight_in_channels != in_channels:
+        raise ValueError(f"Weight channels {weight_in_channels} must match input channels {in_channels}")
+    
+    # Compute output dimensions
+    out_height = in_height - kernel_height + 1
+    out_width = in_width - kernel_width + 1
+
+    if out_height <= 0 or out_width <= 0:
+        raise ValueError(f"Output dimensions ({out_height}, {out_width}) must be positive. Input size ({in_height}, {in_width}) too small for kernel ({kernel_height}, {kernel_width})")
+    
+    # Initialize output tensor
+    out_data = np.zeros((batch_size, out_channels, out_height, out_width), dtype=input.data.dtype)
+    for batch_index in range(batch_size):
+        for out_channel in range(out_channels):
+            for in_channel in range(in_channels):
+                out_data[batch_index, out_channel] += correlate2d(input.data[batch_index, in_channel], weight.data[out_channel, in_channel])
+
+    # Add bias if provided
+    if bias is not None:
+        out_data += bias.data.reshape(1, out_channels, 1, 1)
+
+    out = Tensor(out_data, requires_grad=input.requires_grad or weight.requires_grad or (bias.requires_grad if bias is not None else False), dtype=input.data.dtype)
+    out.depends_on = [input, weight]
+
+    if bias is not None:
+        out.depends_on.append(bias)
+
+    def _backward() -> None:
+        if input.requires_grad:
+            grad_input = np.zeros_like(input.data)
+            
+            for batch_index in range(batch_size):
+                for out_channel in range(out_channels):
+                    for in_channel in range(in_channels):
+                        padded_grad = np.pad(out.grad[batch_index, out_channel], ((kernel_height-1, kernel_height-1), (kernel_width-1, kernel_width-1)), mode='constant', constant_values=0)
+                        grad_input[batch_index, in_channel] += convolve2d(padded_grad, weight.data[out_channel, in_channel])
+
+            input.grad = input.grad + grad_input if input.grad is not None else grad_input
+        
+        if weight.requires_grad:
+            grad_weight = np.zeros_like(weight.data)
+            
+            for batch_index in range(batch_size):
+                for out_channel in range(out_channels):
+                    for in_channel in range(in_channels):
+                        grad_weight[out_channel, in_channel] += correlate2d(input.data[batch_index, in_channel], out.grad[batch_index, out_channel])
+
+            weight.grad = weight.grad + grad_weight if weight.grad is not None else grad_weight
+        
+        if bias is not None and bias.requires_grad:
+            bias.grad = bias.grad + np.sum(out.grad, axis=(0, 2, 3)) if bias.grad is not None else np.sum(out.grad, axis=(0, 2, 3))
 
     out._grad_func = _backward
     return out

@@ -82,7 +82,7 @@ class Linear(Module):
     def __init__(self, in_features: int, out_features: int) -> None:
         """Initialize a Linear layer with weights and bias."""
         super().__init__()
-        self.weight = Tensor(np.random.randn(in_features, out_features) * np.sqrt(2. / in_features), requires_grad=True, dtype=np.float64)  # He initialization
+        self.weight = Tensor(np.random.randn(out_features, in_features) * np.sqrt(2. / in_features), requires_grad=True, dtype=np.float64)  # He initialization
         self.bias = Tensor(np.zeros((out_features,)), requires_grad=True, dtype=np.float64)
 
         self._parameters = [self.weight, self.bias]
@@ -101,6 +101,25 @@ class Dropout(Module):
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through the dropout layer."""
         return F.dropout(x, self.p, self.training)
+    
+
+class Conv2d(Module):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: tuple[int, int]) -> None:
+        """Initialize a Conv2d layer with weights and bias."""
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        
+        # Initialize weights and bias
+        self.weight = Tensor(np.random.randn(out_channels, in_channels, *kernel_size) * np.sqrt(2. / (in_channels * np.prod(kernel_size))), requires_grad=True, dtype=np.float64)  # He initialization
+        self.bias = Tensor(np.zeros((out_channels,)), requires_grad=True, dtype=np.float64)
+
+        self._parameters = [self.weight, self.bias]
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward pass through the Conv2d layer."""
+        return F.conv2d(x, self.weight, self.bias)
 
 
 # TODO: Add reshape layer

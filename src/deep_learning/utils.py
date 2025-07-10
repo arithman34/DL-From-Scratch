@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Any, Tuple
 import numpy.typing as npt
 
@@ -28,3 +29,31 @@ def unbroadcast(grad: npt.NDArray, shape: Tuple[int, ...]) -> npt.NDArray:
             grad = grad.sum(axis=i, keepdims=True)
     
     return grad
+
+
+def correlate2d(input: np.ndarray, kernel: np.ndarray):
+    """
+    Perform a 2D correlation (cross-correlation) between a single 2D input and kernel.
+    Simplified version with stride=1, dilation=1.
+    """
+    H_in, W_in = input.shape
+    kH, kW = kernel.shape
+
+    # Output dimensions
+    H_out = H_in - kH + 1
+    W_out = W_in - kW + 1
+
+    output = np.zeros((H_out, W_out), dtype=input.dtype)
+
+    for i in range(H_out):
+        for j in range(W_out):
+            # Extract region from input
+            region = input[i:i + kH, j:j + kW]
+            output[i, j] = np.sum(np.multiply(region, kernel))
+
+    return output
+
+
+def convolve2d(input: np.ndarray, kernel: np.ndarray):
+    """Performs 2D convolution by flipping the kernel and calling correlate2d."""
+    return correlate2d(input, np.flip(kernel))
