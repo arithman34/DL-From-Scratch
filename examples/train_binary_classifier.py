@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from deep_learning.dataset import Dataset, DataLoader
 from deep_learning.module import Module, Linear, ReLU, Sigmoid, Sequential
@@ -61,6 +62,9 @@ def train_binary_classifier():
     train_losses = []
     train_accuracies = []
 
+    model.train()  # Set to training mode
+    print("Starting training...")
+    start_time = time.time()
     # Training loop
     for epoch in range(num_epochs):
         total_loss = 0.0
@@ -88,8 +92,11 @@ def train_binary_classifier():
 
         print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
 
-
     # Evaluation
+    print("\nEvaluating on test set...")
+    total_correct = 0
+    total_samples = 0
+    model.eval()  # Set to evaluation mode
     for x_batch, y_batch in test_loader:
         outputs = model(x_batch)
         preds = (outputs.data > 0.5).astype(int).squeeze()
@@ -99,6 +106,8 @@ def train_binary_classifier():
 
     test_accuracy = total_correct / total_samples
     print(f"Test Accuracy: {test_accuracy:.4f}")
+
+    print(f"Training and evaluation completed in {time.time() - start_time:.2f} seconds")
 
 
 if __name__ == "__main__":
