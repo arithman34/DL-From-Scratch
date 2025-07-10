@@ -122,6 +122,18 @@ class Conv2d(Module):
         return F.conv2d(x, self.weight, self.bias)
 
 
+class MaxPool2d(Module):
+    def __init__(self, kernel_size: tuple[int, int], stride: tuple[int, int] = None) -> None:
+        """Initialize a MaxPool2d layer."""
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride if stride is not None else kernel_size
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward pass through the MaxPool2d layer."""
+        return F.max_pool2d(x, self.kernel_size, self.stride)
+
+
 # TODO: Add reshape layer
 # TODO: Add batch normalization layer
 # TODO: Add conv1d, conv2d layers

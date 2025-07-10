@@ -323,6 +323,7 @@ def conv2d(input, weight, bias=None):
     """
     from deep_learning.tensor import Tensor
     # TOOO: Add support for stride, dilation, and padding
+    # TODO: This function takes too long to run, optimize it (risk is losing educational benefit)
 
     input = ensure_tensor(input)
     weight = ensure_tensor(weight)
@@ -386,6 +387,69 @@ def conv2d(input, weight, bias=None):
         
         if bias is not None and bias.requires_grad:
             bias.grad = bias.grad + np.sum(out.grad, axis=(0, 2, 3)) if bias.grad is not None else np.sum(out.grad, axis=(0, 2, 3))
+
+    out._grad_func = _backward
+    return out
+
+
+def max_pool2d(input, kernel_size: Tuple[int, int], stride: Optional[Tuple[int, int]] = None):
+    """Perform 2D max pooling on input."""
+    from deep_learning.tensor import Tensor
+
+    input = ensure_tensor(input)
+    batch_size, in_channels, in_height, in_width = input.data.shape
+    kernel_height, kernel_width = kernel_size
+
+    if stride is None:
+        stride = kernel_size  # Updated default
+    stride_height, stride_width = stride
+
+    # Compute output dimensions
+    out_height = (in_height - kernel_height) // stride_height + 1
+    out_width = (in_width - kernel_width) // stride_width + 1
+
+    if out_height <= 0 or out_width <= 0:
+        raise ValueError(f"Output dimensions ({out_height}, {out_width}) must be positive. Input size ({in_height}, {in_width}) too small for kernel ({kernel_height}, {kernel_width}) and stride ({stride_height}, {stride_width})")
+
+    # Initialize output tensor and index map
+    out_data = np.zeros((batch_size, in_channels, out_height, out_width), dtype=input.data.dtype)
+    max_indices = np.zeros_like(out_data, dtype=np.int32)
+
+    for batch_index in range(batch_size):
+        for channel in range(in_channels):
+            for i in range(out_height):
+                for j in range(out_width):
+                    h_start = i * stride_height
+                    h_end = h_start + kernel_height
+                    w_start = j * stride_width
+                    w_end = w_start + kernel_width
+
+                    window = input.data[batch_index, channel, h_start:h_end, w_start:w_end]
+                    max_index = np.argmax(window)
+                    out_data[batch_index, channel, i, j] = window.flat[max_index]
+                    max_indices[batch_index, channel, i, j] = max_index
+
+    out = Tensor(out_data, requires_grad=input.requires_grad)
+    out.depends_on = [input]
+
+    def _backward() -> None:
+        if input.requires_grad:
+            grad_input = np.zeros_like(input.data)
+
+            for batch_index in range(batch_size):
+                for channel in range(in_channels):
+                    for i in range(out_height):
+                        for j in range(out_width):
+                            h_start = i * stride_height
+                            w_start = j * stride_width
+
+                            max_index = max_indices[batch_index, channel, i, j]
+                            max_h = h_start + (max_index // kernel_width)
+                            max_w = w_start + (max_index % kernel_width)
+
+                            grad_input[batch_index, channel, max_h, max_w] += out.grad[batch_index, channel, i, j]
+
+            input.grad = input.grad + grad_input if input.grad is not None else grad_input
 
     out._grad_func = _backward
     return out

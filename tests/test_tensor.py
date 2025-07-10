@@ -729,5 +729,42 @@ class TestCrossEntropy(unittest.TestCase):
         np.testing.assert_array_almost_equal(y_pred.grad, torch_y_pred.grad.numpy())
 
 
+class TestMaxPool2d(unittest.TestCase):
+    def test_tensor_max_pool2d(self):
+        # Test the 2D max pooling operation
+        x = Tensor(np.random.randn(1, 3, 5, 5), requires_grad=False)  # Input tensor (batch_size, channels, height, width)
+        torch_x = torch.tensor(x.data, requires_grad=False)
+
+        kernel_size = (2, 2)
+        stride = (1, 1)
+
+        y = F.max_pool2d(x, kernel_size=kernel_size, stride=stride)
+        torch_y = torch_F.max_pool2d(torch_x, kernel_size=kernel_size, stride=stride)
+
+        # Check the result of max pooling operation
+        np.testing.assert_array_almost_equal(y.data, torch_y.numpy(), decimal=6)
+
+    def test_tensor_max_pool2d_backward(self):
+        # Test backward propagation of gradients for 2D max pooling
+        x = Tensor(np.random.randn(1, 3, 5, 5), requires_grad=True)  # Input tensor (batch_size, channels, height, width)
+        torch_x = torch.tensor(x.data, requires_grad=True)
+
+        kernel_size = (2, 2)
+        stride = (2, 2)
+
+        y = F.max_pool2d(x, kernel_size=kernel_size, stride=stride)
+        torch_y = torch_F.max_pool2d(torch_x, kernel_size=kernel_size, stride=stride)
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_almost_equal(x.grad, torch_x.grad.numpy(), decimal=6)
+
+
 if __name__ == "__main__":
     unittest.main()

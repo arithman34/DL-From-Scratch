@@ -1,4 +1,5 @@
-from sklearn.datasets import make_classification, make_regression, make_blobs
+import numpy as np
+from sklearn.datasets import make_classification, make_regression, make_blobs, fetch_openml
 from sklearn.model_selection import train_test_split
 
 
@@ -40,4 +41,22 @@ def get_clustering_data(num_samples=10000, num_features=2, centers=3, cluster_st
         random_state=random_state
     )
     
+    return train_test_split(X, y, test_size=0.2, random_state=random_state, stratify=y)
+
+
+def get_mnist_data(num_samples=None, random_state=None):
+    """Load the MNIST dataset with shape (N, 1, 28, 28)"""
+    mnist = fetch_openml('mnist_784', version=1, as_frame=False, parser='pandas')
+    X = mnist.data.astype(np.float32) / 255.0  # normalize to [0, 1]
+    y = mnist.target.astype(np.int64)
+
+    # Reshape to (num_samples, 1, 28, 28) to include channel dimension
+    X = X.reshape(-1, 1, 28, 28)
+
+    # Randomly sample the specified number of samples
+    if num_samples is not None and num_samples < len(X):
+        indices = np.random.choice(len(X), num_samples, replace=False)
+        X = X[indices]
+        y = y[indices]
+
     return train_test_split(X, y, test_size=0.2, random_state=random_state, stratify=y)
