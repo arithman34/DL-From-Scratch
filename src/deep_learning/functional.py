@@ -719,12 +719,15 @@ def squeeze(input, axis: int = -1):
 
 
 # Loss functions
-def binary_cross_entropy(input, targets):
+def binary_cross_entropy(input, targets, reduction: str = "mean"):
     """Compute the binary cross-entropy loss with respect to the targets."""
     from deep_learning.tensor import Tensor
 
     input = ensure_tensor(input)
     targets = ensure_tensor(targets)
+
+    if reduction != "mean":
+        raise ValueError(f"Unsupported reduction method: {reduction}. Only 'mean' is supported for binary cross-entropy loss.")
 
     # Flatten both to 1D to avoid shape mismatches
     preds_flat = input.data.flatten()
@@ -747,12 +750,15 @@ def binary_cross_entropy(input, targets):
     return out
 
 
-def cross_entropy(input, targets):
+def cross_entropy(input, targets, reduction: str = "mean"):
     """Compute the cross-entropy loss with respect to the targets."""
     from deep_learning.tensor import Tensor
     
     input = ensure_tensor(input)
     targets = ensure_tensor(targets)
+
+    if reduction != "mean":
+        raise ValueError(f"Unsupported reduction method: {reduction}. Only 'mean' is supported for cross-entropy loss.")
 
     clipped = np.clip(input.data, EPSILON, 1 - EPSILON)
 
@@ -767,6 +773,66 @@ def cross_entropy(input, targets):
             # Compute the gradient w.r.t. the predicted probabilities
             grad[np.arange(len(targets.data)), targets.data.astype(int)] = -1 / clipped[np.arange(len(targets.data)), targets.data.astype(int)]
             grad = grad / len(targets.data)  # Mean over batch
+            input.grad = input.grad + grad if input.grad is not None else grad
+
+    out._grad_func = _backward
+    return out
+
+
+def mse_loss(input, targets, reduction: str = "mean"):
+    """Compute the Mean Squared Error loss with respect to the targets."""
+    from deep_learning.tensor import Tensor
+
+    input = ensure_tensor(input)
+    targets = ensure_tensor(targets)
+
+    if reduction != "mean":
+        raise ValueError(f"Unsupported reduction method: {reduction}. Only 'mean' is supported for MSE loss.")
+
+    # Flatten both to 1D to avoid shape mismatches
+    preds_flat = input.data.flatten()
+    targets_flat = targets.data.flatten()
+
+    loss = np.mean((preds_flat - targets_flat) ** 2)
+    out = Tensor(loss, requires_grad=input.requires_grad)
+    out.depends_on = [input, targets]
+
+    def _backward() -> None:
+        if input.requires_grad:
+            grad = 2 * (preds_flat - targets_flat) / targets_flat.size
+            
+            # Reshape gradient back to original preds shape
+            grad = grad.reshape(input.data.shape)
+            input.grad = input.grad + grad if input.grad is not None else grad
+
+    out._grad_func = _backward
+    return out
+
+
+def mae_loss(input, targets, reduction: str = "mean"):
+    """Compute the Mean Absolute Error loss with respect to the targets."""
+    from deep_learning.tensor import Tensor
+
+    input = ensure_tensor(input)
+    targets = ensure_tensor(targets)
+
+    if reduction != "mean":
+        raise ValueError(f"Unsupported reduction method: {reduction}. Only 'mean' is supported for MAE loss.")
+
+    # Flatten both to 1D to avoid shape mismatches
+    preds_flat = input.data.flatten()
+    targets_flat = targets.data.flatten()
+
+    loss = np.mean(np.abs(preds_flat - targets_flat))
+    out = Tensor(loss, requires_grad=input.requires_grad)
+    out.depends_on = [input, targets]
+
+    def _backward() -> None:
+        if input.requires_grad:
+            grad = np.sign(preds_flat - targets_flat) / targets_flat.size
+            
+            # Reshape gradient back to original preds shape
+            grad = grad.reshape(input.data.shape)
             input.grad = input.grad + grad if input.grad is not None else grad
 
     out._grad_func = _backward

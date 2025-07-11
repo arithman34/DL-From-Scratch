@@ -730,6 +730,72 @@ class TestCrossEntropy(unittest.TestCase):
         np.testing.assert_array_almost_equal(y_pred.grad, torch_y_pred.grad.numpy())
 
 
+class TestMSELoss(unittest.TestCase):
+    def test_tensor_mse_loss(self):
+        # Test mean squared error loss
+        y_true = Tensor(np.array([1.0, 2.0, 3.0]), requires_grad=False)
+        y_pred = Tensor(np.array([1.5, 2.5, 3.5]), requires_grad=False)
+
+        torch_y_true = torch.tensor(y_true.data, requires_grad=False)
+        torch_y_pred = torch.tensor(y_pred.data, requires_grad=False)
+
+        loss = F.mse_loss(y_pred, y_true)
+        torch_loss = torch_F.mse_loss(torch_y_pred, torch_y_true)
+
+        # Check the result of MSE loss
+        np.testing.assert_array_almost_equal(loss.data, torch_loss.item(), decimal=6)
+
+    def test_tensor_mse_loss_backward(self):
+        # Test backward propagation of gradients for MSE loss
+        y_true = Tensor(np.array([1.0, 2.0, 3.0]), requires_grad=False)
+        y_pred = Tensor(np.array([1.5, 2.5, 3.5]), requires_grad=True)
+        torch_y_true = torch.tensor(y_true.data, requires_grad=False)
+        torch_y_pred = torch.tensor(y_pred.data, requires_grad=True)
+
+        loss = F.mse_loss(y_pred, y_true)
+        torch_loss = torch_F.mse_loss(torch_y_pred, torch_y_true)
+
+        # Call backward() to calculate gradients
+        loss.backward()
+        torch_loss.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_almost_equal(y_pred.grad, torch_y_pred.grad.numpy())
+
+
+class TestMAELoss(unittest.TestCase):
+    def test_tensor_mae_loss(self):
+        # Test mean absolute error loss
+        y_true = Tensor(np.array([1.0, 2.0, 3.0]), requires_grad=False)
+        y_pred = Tensor(np.array([1.5, 2.5, 3.5]), requires_grad=False)
+
+        torch_y_true = torch.tensor(y_true.data, requires_grad=False)
+        torch_y_pred = torch.tensor(y_pred.data, requires_grad=False)
+
+        loss = F.mae_loss(y_pred, y_true)
+        torch_loss = torch_F.l1_loss(torch_y_pred, torch_y_true)
+
+        # Check the result of MAE loss
+        np.testing.assert_array_almost_equal(loss.data, torch_loss.item(), decimal=6)
+
+    def test_tensor_mae_loss_backward(self):
+        # Test backward propagation of gradients for MAE loss
+        y_true = Tensor(np.array([1.0, 2.0, 3.0]), requires_grad=False)
+        y_pred = Tensor(np.array([1.5, 2.5, 3.5]), requires_grad=True)
+        torch_y_true = torch.tensor(y_true.data, requires_grad=False)
+        torch_y_pred = torch.tensor(y_pred.data, requires_grad=True)
+
+        loss = F.mae_loss(y_pred, y_true)
+        torch_loss = torch_F.l1_loss(torch_y_pred, torch_y_true)
+
+        # Call backward() to calculate gradients
+        loss.backward()
+        torch_loss.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_almost_equal(y_pred.grad, torch_y_pred.grad.numpy())
+
+
 class TestMaxPool2d(unittest.TestCase):
     def test_tensor_max_pool2d(self):
         # Test the 2D max pooling operation
