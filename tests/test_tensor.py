@@ -824,5 +824,37 @@ class TestBatchNorm2d(unittest.TestCase):
         np.testing.assert_array_almost_equal(weight.grad, torch_weight.grad.numpy(), decimal=6)
         np.testing.assert_array_almost_equal(bias.grad, torch_bias.grad.numpy(), decimal=6)
 
+
+class TestFlatten(unittest.TestCase):
+    def test_tensor_flatten(self):
+        # Test the flatten operation
+        x = Tensor(np.random.randn(2, 5, 5), requires_grad=False)
+        torch_x = torch.tensor(x.data, requires_grad=False)
+
+        y = F.flatten(x)
+        torch_y = torch_x.flatten()
+
+        # Check the result of flatten operation
+        np.testing.assert_array_equal(y.data, torch_y.numpy())
+
+    def test_tensor_flatten_backward(self):
+        # Test backward propagation of gradients for flatten operation
+        x = Tensor(np.random.randn(2, 5, 5), requires_grad=True)
+        torch_x = torch.tensor(x.data, requires_grad=True)
+
+        y = F.flatten(x)
+        torch_y = torch_x.flatten()
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_equal(x.grad, torch_x.grad.numpy())
+
+
 if __name__ == "__main__":
     unittest.main()

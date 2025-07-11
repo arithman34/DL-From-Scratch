@@ -620,6 +620,43 @@ def mean(input, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bo
 
 
 # Shape manipulation
+def flatten(input, start_dim: int = 0, end_dim: int = -1):
+    """Flatten the tensor from start_dim to end_dim."""
+    from deep_learning.tensor import Tensor
+    input = ensure_tensor(input)
+
+    ndim = input.data.ndim
+    if start_dim < 0:
+        start_dim += ndim
+    if end_dim < 0:
+        end_dim += ndim
+
+    if not (0 <= start_dim <= end_dim < ndim):
+        raise ValueError(
+            f"Invalid dimensions for flattening: start_dim={start_dim}, end_dim={end_dim}, "
+            f"for tensor with {ndim} dimensions"
+        )
+
+    # Shape before start_dim, flattened part, shape after end_dim
+    leading_shape = input.data.shape[:start_dim]
+    flattened_dim = np.prod(input.data.shape[start_dim:end_dim + 1])
+    trailing_shape = input.data.shape[end_dim + 1:]
+
+    new_shape = leading_shape + (flattened_dim,) + trailing_shape
+    out_data = input.data.reshape(new_shape)
+
+    out = Tensor(out_data, requires_grad=input.requires_grad)
+    out.depends_on = [input]
+
+    def _backward() -> None:
+        if input.requires_grad:
+            grad_input = out.grad.reshape(input.data.shape)
+            input.grad = input.grad + grad_input if input.grad is not None else grad_input
+
+    out._grad_func = _backward
+    return out
+
+
 def transpose(input):
     """Transpose the tensor."""
     from deep_learning.tensor import Tensor

@@ -147,8 +147,8 @@ class BatchNorm2d(Module):
         self.bias = Tensor(np.zeros(num_features), requires_grad=True, dtype=np.float64)
         
         # Running statistics
-        self.running_mean = np.zeros(num_features)
-        self.running_var = np.ones(num_features)
+        self.running_mean = Tensor(np.zeros(num_features), requires_grad=False, dtype=np.float64)
+        self.running_var = Tensor(np.ones(num_features), requires_grad=False, dtype=np.float64)
 
         self._parameters = [self.weight, self.bias]
 
@@ -156,7 +156,16 @@ class BatchNorm2d(Module):
         """Forward pass through the BatchNorm2d layer."""
         return F.batch_norm2d(x, self.weight, self.bias, self.running_mean, self.running_var, self.training, self.momentum, self.eps)
 
-# TODO: Implement flatten layer
+
+class Flatten(Module):
+    def __init__(self, start_dim=1, end_dim=-1) -> None:
+        super().__init__()
+        self.start_dim = start_dim
+        self.end_dim = end_dim
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Flatten the input tensor."""
+        return F.flatten(x, self.start_dim, self.end_dim)
 
 
 class ReLU(Module):

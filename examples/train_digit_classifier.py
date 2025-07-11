@@ -2,7 +2,7 @@ import time
 import numpy as np
 
 from deep_learning.dataset import Dataset, DataLoader
-from deep_learning.module import Module, Linear, ReLU, Sequential, Conv2d, Softmax, MaxPool2d
+from deep_learning.module import Module, Linear, ReLU, Sequential, Conv2d, Softmax, MaxPool2d, Flatten, BatchNorm2d
 from deep_learning.optimizers import Adam
 from deep_learning.loss import CrossEntropyLoss
 from deep_learning.tensor import Tensor
@@ -16,12 +16,18 @@ class MNISTClassifier(Module):
         # Feature extractor
         self.feature_extractor = Sequential(
             Conv2d(in_channels, hidden_features, kernel_size=(3, 3)),  # -> (hidden_features, 26, 26)
+            BatchNorm2d(hidden_features),
             ReLU(),
             MaxPool2d(kernel_size=(2, 2)),  # -> (hidden_features, 13, 13)
+
             Conv2d(hidden_features, hidden_features * 2, kernel_size=(3, 3)),  # -> (hidden_features*2, 11, 11)
+            BatchNorm2d(hidden_features * 2),
             ReLU(),
             MaxPool2d(kernel_size=(2, 2))  # -> (hidden_features*2, 5, 5)
         )
+
+        # Flatten layer to convert 2D feature maps to 1D
+        self.flatten = Flatten()
 
         final_channels = hidden_features * 2
         flattened_size = final_channels * 5 * 5
@@ -36,8 +42,7 @@ class MNISTClassifier(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.feature_extractor(x)
-        batch_size = x.shape[0]
-        x = Tensor(x.data.reshape(batch_size, -1), requires_grad=x.requires_grad)
+        x = self.flatten(x)
         return self.fc(x)
 
 
