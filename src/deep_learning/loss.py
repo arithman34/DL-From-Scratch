@@ -4,6 +4,7 @@ from deep_learning import functional as F
 
 class Loss:
     def __init__(self, reduction: str):
+        """Base class for loss functions. Only supports mean reduction by default."""
         self.reduction = "mean"  # Default reduction method
 
     def __call__(self, *args, **kwargs) -> Tensor:
@@ -13,6 +14,8 @@ class Loss:
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         """Compute the loss between input and target tensors."""
         raise NotImplementedError("Loss function must implement the forward method.")
+
+# TODO: Implement Mean Squared Error (MSE) Loss and Mean Absolute Error (MAE) Loss
 
 
 class BCELoss(Loss):

@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as torch_F
 
+from deep_learning.backend import EPSILON
 from deep_learning.tensor import Tensor
 from deep_learning import functional as F
 
@@ -765,6 +766,63 @@ class TestMaxPool2d(unittest.TestCase):
         # Check that gradients are computed correctly
         np.testing.assert_array_almost_equal(x.grad, torch_x.grad.numpy(), decimal=6)
 
+class TestBatchNorm2d(unittest.TestCase):
+    def test_tensor_batch_norm2d(self):
+        # Test the 2D batch normalization operation
+        x = Tensor(np.random.randn(10, 3, 5, 5), requires_grad=False)  # Input tensor (batch_size, channels, height, width)
+        torch_x = torch.tensor(x.data, requires_grad=False)
+
+        momentum = 0.1
+        eps = EPSILON
+
+        weight = Tensor(np.ones(3), requires_grad=False)
+        bias = Tensor(np.zeros(3), requires_grad=False)
+        running_mean = Tensor(np.zeros(3), requires_grad=False)
+        running_var = Tensor(np.ones(3), requires_grad=False)
+
+        torch_weight = torch.tensor(weight.data, requires_grad=False)
+        torch_bias = torch.tensor(bias.data, requires_grad=False)
+        torch_running_mean = torch.tensor(running_mean.data, requires_grad=False)
+        torch_running_var = torch.tensor(running_var.data, requires_grad=False)
+
+        y = F.batch_norm2d(x, weight=weight, bias=bias, running_mean=running_mean, running_var=running_var, momentum=momentum, eps=eps, training=False)
+        torch_y = torch_F.batch_norm(torch_x, weight=torch_weight, bias=torch_bias, running_mean=torch_running_mean, running_var=torch_running_var, momentum=momentum, eps=eps, training=False)
+
+        # Check the result of batch normalization operation
+        np.testing.assert_array_almost_equal(y.data, torch_y.numpy(), decimal=6)
+
+    def test_tensor_batch_norm2d_backward(self):
+        # Test backward propagation of gradients for 2D batch normalization
+        x = Tensor(np.random.randn(10, 3, 5, 5), requires_grad=True)  # Input tensor (batch_size, channels, height, width)
+        torch_x = torch.tensor(x.data, requires_grad=True)
+
+        momentum = 0.1
+        eps = EPSILON
+
+        weight = Tensor(np.ones(3), requires_grad=True)
+        bias = Tensor(np.zeros(3), requires_grad=True)
+        running_mean = Tensor(np.zeros(3), requires_grad=False)
+        running_var = Tensor(np.ones(3), requires_grad=False)
+
+        torch_weight = torch.tensor(weight.data, requires_grad=True)
+        torch_bias = torch.tensor(bias.data, requires_grad=True)
+        torch_running_mean = torch.tensor(running_mean.data, requires_grad=False)
+        torch_running_var = torch.tensor(running_var.data, requires_grad=False)
+
+        y = F.batch_norm2d(x, weight=weight, bias=bias, running_mean=running_mean, running_var=running_var, momentum=momentum, eps=eps, training=True)
+        torch_y = torch_F.batch_norm(torch_x, weight=torch_weight, bias=torch_bias, running_mean=torch_running_mean, running_var=torch_running_var, momentum=momentum, eps=eps, training=True)
+
+        # Sum the output to reduce it to a scalar
+        torch_y_sum = torch_y.sum()
+
+        # Call backward() to calculate gradients
+        y.backward()
+        torch_y_sum.backward()
+
+        # Check that gradients are computed correctly
+        np.testing.assert_array_almost_equal(x.grad, torch_x.grad.numpy(), decimal=6)
+        np.testing.assert_array_almost_equal(weight.grad, torch_weight.grad.numpy(), decimal=6)
+        np.testing.assert_array_almost_equal(bias.grad, torch_bias.grad.numpy(), decimal=6)
 
 if __name__ == "__main__":
     unittest.main()

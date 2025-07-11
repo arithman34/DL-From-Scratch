@@ -503,6 +503,84 @@ def dropout(input, p: float = 0.5, training: bool = True):
     return out
 
 
+def batch_norm2d(input, running_mean, running_var, weight = None, bias = None, training: bool = True, momentum: float = 0.1, eps: float = EPSILON):
+    """Applies 2D batch normalization on input of shape (N, C, H, W)."""
+    from deep_learning.tensor import Tensor
+
+    input = ensure_tensor(input)
+    N, C, H, W = input.data.shape
+
+    if weight is not None:
+        weight = ensure_tensor(weight)
+        if weight.data.shape != (C,):
+            raise ValueError(f"Weight shape {weight.data.shape} must match number of channels {C}")
+        
+    if bias is not None:
+        bias = ensure_tensor(bias)
+        if bias.data.shape != (C,):
+            raise ValueError(f"Bias shape {bias.data.shape} must match number of channels {C}")
+
+    reduce_axes = (0, 2, 3)
+
+    if training:
+        mean = np.mean(input.data, axis=reduce_axes, keepdims=True)
+        var = np.var(input.data, axis=reduce_axes, keepdims=True)
+
+        # Update running statistics with Tensor objects
+        running_mean.data = momentum * mean.squeeze() + (1 - momentum) * running_mean.data
+        running_var.data = momentum * var.squeeze() + (1 - momentum) * running_var.data
+    else:
+        mean = running_mean.data.reshape(1, C, 1, 1)
+        var = running_var.data.reshape(1, C, 1, 1)
+
+    std = np.sqrt(var + eps)
+    x_hat = (input.data - mean) / std
+
+    out_data = x_hat
+    if weight is not None:
+        out_data = out_data * weight.data.reshape(1, C, 1, 1)
+    if bias is not None:
+        out_data = out_data + bias.data.reshape(1, C, 1, 1)
+
+    requires_grad = input.requires_grad or (weight.requires_grad if weight else False) or (bias.requires_grad if bias else False)
+    out = Tensor(out_data, requires_grad=requires_grad)
+    out.depends_on = [input]
+    if weight is not None:
+        out.depends_on.append(weight)
+    if bias is not None:
+        out.depends_on.append(bias)
+
+    def _backward():
+        dx_hat = out.grad
+        if weight is not None:
+            dx_hat = dx_hat * weight.data.reshape(1, C, 1, 1)
+
+        x_mu = input.data - mean
+        inv_std = 1.0 / std
+        N_HW = N * H * W
+
+        dvar = np.sum(dx_hat * x_mu * -0.5 * inv_std**3, axis=reduce_axes, keepdims=True)
+        dmean = np.sum(dx_hat * -inv_std, axis=reduce_axes, keepdims=True) + dvar * np.mean(-2.0 * x_mu, axis=reduce_axes, keepdims=True)
+
+        grad_input = dx_hat * inv_std + dvar * 2 * x_mu / N_HW + dmean / N_HW
+
+        if input.grad is None:
+            input.grad = grad_input
+        else:
+            input.grad += grad_input
+
+        if weight is not None and weight.requires_grad:
+            grad_weight = np.sum(out.grad * x_hat, axis=(0, 2, 3))
+            weight.grad = grad_weight if weight.grad is None else weight.grad + grad_weight
+
+        if bias is not None and bias.requires_grad:
+            grad_bias = np.sum(out.grad, axis=(0, 2, 3))
+            bias.grad = grad_bias if bias.grad is None else bias.grad + grad_bias
+
+    out._grad_func = _backward
+    return out
+
+
 # Reduction operations
 def sum(input, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     """Compute the sum of the tensor along specified axes."""

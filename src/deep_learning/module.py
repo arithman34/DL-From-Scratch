@@ -3,6 +3,7 @@ from typing import Any
 
 from deep_learning.tensor import Tensor
 from deep_learning import functional as F
+from deep_learning.backend import EPSILON
 
 
 class Module:
@@ -134,9 +135,28 @@ class MaxPool2d(Module):
         return F.max_pool2d(x, self.kernel_size, self.stride)
 
 
-# TODO: Add reshape layer
-# TODO: Add batch normalization layer
-# TODO: Add conv1d, conv2d layers
+class BatchNorm2d(Module):
+    def __init__(self, num_features: int, eps: float = EPSILON, momentum: float = 0.1) -> None:
+        """Initialize a BatchNorm2d layer."""
+        super().__init__()
+        self.num_features = num_features
+        self.eps = eps
+        self.momentum = momentum
+        
+        self.weight = Tensor(np.ones(num_features), requires_grad=True, dtype=np.float64)
+        self.bias = Tensor(np.zeros(num_features), requires_grad=True, dtype=np.float64)
+        
+        # Running statistics
+        self.running_mean = np.zeros(num_features)
+        self.running_var = np.ones(num_features)
+
+        self._parameters = [self.weight, self.bias]
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward pass through the BatchNorm2d layer."""
+        return F.batch_norm2d(x, self.weight, self.bias, self.running_mean, self.running_var, self.training, self.momentum, self.eps)
+
+# TODO: Implement flatten layer
 
 
 class ReLU(Module):
